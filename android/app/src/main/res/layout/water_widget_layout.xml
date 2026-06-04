@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Home Screen Widget layout (2×2 minimum) -->
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:gravity="center"
+    android:background="@drawable/widget_background"
+    android:padding="8dp">
+
+    <!-- Su damlası ikonu (rengi dinamik olarak değiştirilir) -->
+    <ImageView
+        android:id="@+id/widget_icon"
+        android:layout_width="32dp"
+        android:layout_height="32dp"
+        android:src="@drawable/ic_water_drop"
+        android:tint="#00BCD4"
+        android:contentDescription="Su" />
+
+    <!-- Kalan miktar (ör. "1.5 L" veya "750 ml") -->
+    <TextView
+        android:id="@+id/widget_remaining_text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="2.0 L"
+        android:textColor="#FFFFFF"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        android:layout_marginTop="4dp" />
+
+    <!-- Alt bilgi: "kalan / hedef" -->
+    <TextView
+        android:id="@+id/widget_subtitle_text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="2000 / 2000 ml"
+        android:textColor="#80FFFFFF"
+        android:textSize="10sp"
+        android:layout_marginTop="2dp" />
+
+    <!-- Hızlı ekleme butonu (+250 ml) -->
+    <TextView
+        android:id="@+id/widget_add_button"
+        android:layout_width="48dp"
+        android:layout_height="24dp"
+        android:text="+250"
+        android:textColor="#00BCD4"
+        android:textSize="11sp"
+        android:textStyle="bold"
+        android:gravity="center"
+        android:background="@drawable/radial_btn_bg"
+        android:layout_marginTop="6dp" />
+
+</LinearLayout>

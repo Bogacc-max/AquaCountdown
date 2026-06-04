@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Radyal Menü Layout'u (uzun basma ile açılır)
+    Miktar seçeneklerini dairesel düzende gösterir.
+-->
+<FrameLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="280dp"
+    android:layout_height="280dp"
+    android:background="#00000000">
+
+    <!-- Yarı şeffaf arka plan dairesi -->
+    <View
+        android:layout_width="240dp"
+        android:layout_height="240dp"
+        android:layout_gravity="center"
+        android:background="@drawable/radial_menu_bg" />
+
+    <!-- 100ml — Sol üst -->
+    <TextView
+        android:id="@+id/btn_100ml"
+        android:layout_width="60dp"
+        android:layout_height="60dp"
+        android:layout_gravity="top|start"
+        android:layout_marginTop="40dp"
+        android:layout_marginStart="20dp"
+        android:text="100\nml"
+        android:textColor="#FFFFFF"
+        android:textSize="12sp"
+        android:gravity="center"
+        android:background="@drawable/radial_btn_bg"
+        android:padding="8dp"
+        android:fontFamily="sans-serif-medium" />
+
+    <!-- 200ml — Sağ üst -->
+    <TextView
+        android:id="@+id/btn_200ml"
+        android:layout_width="60dp"
+        android:layout_height="60dp"
+        android:layout_gravity="top|end"
+        android:layout_marginTop="40dp"
+        android:layout_marginEnd="20dp"
+        android:text="200\nml"
+        android:textColor="#FFFFFF"
+        android:textSize="12sp"
+        android:gravity="center"
+        android:background="@drawable/radial_btn_bg"
+        android:padding="8dp"
+        android:fontFamily="sans-serif-medium" />
+
+    <!-- 330ml — Sol alt -->
+    <TextView
+        android:id="@+id/btn_330ml"
+        android:layout_width="60dp"
+        android:layout_height="60dp"
+        android:layout_gravity="bottom|start"
+        android:layout_marginBottom="40dp"
+        android:layout_marginStart="20dp"
+        android:text="330\nml"
+        android:textColor="#FFFFFF"
+        android:textSize="12sp"
+        android:gravity="center"
+        android:background="@drawable/radial_btn_bg"
+        android:padding="8dp"
+        android:fontFamily="sans-serif-medium" />
+
+    <!-- 500ml — Sağ alt -->
+    <TextView
+        android:id="@+id/btn_500ml"
+        android:layout_width="60dp"
+        android:layout_height="60dp"
+        android:layout_gravity="bottom|end"
+        android:layout_marginBottom="40dp"
+        android:layout_marginEnd="20dp"
+        android:text="500\nml"
+        android:textColor="#FFFFFF"
+        android:textSize="12sp"
+        android:gravity="center"
+        android:background="@drawable/radial_btn_bg"
+        android:padding="8dp"
+        android:fontFamily="sans-serif-medium" />
+
+    <!-- Merkez iptal butonu -->
+    <TextView
+        android:layout_width="50dp"
+        android:layout_height="50dp"
+        android:layout_gravity="center"
+        android:text="✕"
+        android:textColor="#80FFFFFF"
+        android:textSize="18sp"
+        android:gravity="center" />
+
+</FrameLayout>

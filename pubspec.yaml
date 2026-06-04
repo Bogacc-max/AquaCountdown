@@ -1,0 +1,63 @@
+name: aquacountdown
+description: "AquaCountdown – Geri sayım mantığıyla su takip uygulaması"
+publish_to: "none"
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.3.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+
+  # State Management
+  flutter_riverpod: ^2.5.1
+  riverpod_annotation: ^2.3.5
+
+  # Local Database
+  sqflite: ^2.3.0
+  # Notifications
+  flutter_local_notifications: ^17.2.2
+  timezone: ^0.9.4
+
+  # Charts / Grafik
+  fl_chart: ^0.69.0
+
+  # Home Screen Widget
+  home_widget: ^0.7.0
+
+  # UI & Utilities
+  google_fonts: ^6.2.1
+  shared_preferences: ^2.2.3
+  intl: ^0.20.0
+  audioplayers: ^6.1.0
+  confetti: ^0.7.0
+  package_info_plus: ^8.1.0
+  url_launcher: ^6.3.0
+  cupertino_icons: ^1.0.8
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+  flutter_launcher_icons: ^0.14.3
+
+flutter:
+  uses-material-design: true
+
+  # Görseller ve sesler — klasöre dosya eklenince otomatik dahil olur
+  assets:
+    - assets/icons/
+    - assets/sounds/
+    - assets/animations/
+
+  # Fontlar google_fonts paketi üzerinden yükleniyor,
+  # bu yüzden assets/fonts/ bildirimine gerek yok.
+
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: "assets/icons/app_icon.png"
+  min_sdk_android: 21

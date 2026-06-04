@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">AquaCountdown</string>
+    <string name="wallpaper_description">AquaCountdown canlı duvar kağıdı — su hedefini ekranında takip et</string>
+    <string name="bubble_channel_name">Su Takibi Aktif</string>
+    <string name="bubble_channel_desc">AquaCountdown yüzen buton servisi</string>
+    <string name="notification_title">💧 Su takibi aktif</string>
+    <string name="add_water_action">+ Su Ekle</string>
+</resources>

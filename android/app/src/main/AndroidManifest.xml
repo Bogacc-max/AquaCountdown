@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.aquacountdown">
+
+    <!-- ─────────────────────────────────────────────── -->
+    <!-- GEREKLİ İZİNLER                                -->
+    <!-- ─────────────────────────────────────────────── -->
+
+    <!-- Bildirimler (Android 13+) -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!-- Yüzen baloncuk için "Diğer uygulamalar üzerinde göster" -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+
+    <!-- Foreground Service (Floating Bubble) -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+
+    <!-- Titreşim geri bildirimi -->
+    <uses-permission android:name="android.permission.VIBRATE" />
+
+    <!-- Home Widget güncelleme -->
+    <uses-permission android:name="android.permission.UPDATE_APP_WIDGET_PROVIDER_INFO" />
+
+    <!-- Cihaz açılışında servisleri başlat (Auto-start) -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
+    <!-- İnternet (iCloud/Drive yedek için) -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <application
+        android:name="${applicationName}"
+        android:icon="@mipmap/ic_launcher"
+        android:label="AquaCountdown"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/LaunchTheme"
+        android:hardwareAccelerated="true">
+
+        <meta-data
+            android:name="flutterEmbedding"
+            android:value="2" />
+
+        <!-- ─────────────────────────────────────────── -->
+        <!-- ANA AKTİVİTE                               -->
+        <!-- ─────────────────────────────────────────── -->
+        <activity
+            android:name=".MainActivity"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
+            android:exported="true"
+            android:hardwareAccelerated="true"
+            android:launchMode="singleTop"
+            android:theme="@style/LaunchTheme"
+            android:windowSoftInputMode="adjustResize">
+            <meta-data
+                android:name="io.flutter.embedding.android.NormalTheme"
+                android:resource="@style/NormalTheme" />
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- ─────────────────────────────────────────── -->
+        <!-- LIVE WALLPAPER SERVİSİ                     -->
+        <!-- ─────────────────────────────────────────── -->
+        <service
+            android:name=".WaterWallpaperService"
+            android:exported="true"
+            android:label="AquaCountdown Duvar Kağıdı"
+            android:permission="android.permission.BIND_WALLPAPER">
+            <intent-filter>
+                <action android:name="android.service.wallpaper.WallpaperService" />
+            </intent-filter>
+            <!-- Wallpaper özellikleri XML dosyası -->
+            <meta-data
+                android:name="android.service.wallpaper"
+                android:resource="@xml/water_wallpaper" />
+        </service>
+
+        <!-- ─────────────────────────────────────────── -->
+        <!-- FLOATING BUBBLE SERVİSİ (Foreground)       -->
+        <!-- ─────────────────────────────────────────── -->
+        <service
+            android:name=".FloatingBubbleService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Ekran üzerinde yüzen su takip butonu" />
+        </service>
+
+        <!-- ─────────────────────────────────────────── -->
+        <!-- BOOT RECEIVER — Cihaz açılınca servisleri başlat -->
+        <!-- ─────────────────────────────────────────── -->
+        <receiver
+            android:name=".BootReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
+
+        <!-- ─────────────────────────────────────────── -->
+        <!-- HOME SCREEN WIDGET                         -->
+        <!-- ─────────────────────────────────────────── -->
+        <receiver
+            android:name=".WaterWidgetProvider"
+            android:exported="true"
+            android:label="AquaCountdown Widget">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="com.aquacountdown.WIDGET_ADD_WATER" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/water_widget_info" />
+        </receiver>
+
+        <!-- Flutter ↔ HomeWidget iletişimi için Activity -->
+        <activity
+            android:name="es.antonborri.home_widget.HomeWidgetBackgroundActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="es.antonborri.home_widget.action.BACKGROUND" />
+            </intent-filter>
+        </activity>
+
+    </application>
+</manifest>
