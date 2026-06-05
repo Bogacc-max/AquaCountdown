@@ -204,6 +204,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             onTap: () => _showThemePicker(settings),
           ),
           _SettingsTile(
+            title: 'Dil / Language',
+            subtitle: _languageLabel(settings.language),
+            onTap: () => _showLanguagePicker(settings),
+          ),
+          _SettingsTile(
             title: 'Birim',
             trailing: SegmentedButton<String>(
               segments: const [
@@ -579,6 +584,24 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         'athlete' => 'Sporcu',
         _ => 'Orta',
       };
+
+  String _languageLabel(String lang) => switch (lang) {
+        'en' => 'English',
+        'de' => 'Deutsch',
+        'es' => 'Español',
+        _ => 'Türkçe',
+      };
+
+  void _showLanguagePicker(UserSettings settings) {
+    _showOptionSheet(
+      context: context,
+      title: 'Dil / Language',
+      options: ['Türkçe', 'English', 'Deutsch', 'Español'],
+      selectedIndex: ['tr', 'en', 'de', 'es'].indexOf(settings.language),
+      onSelect: (i) =>
+          _saveSettings(settings.copy()..language = ['tr', 'en', 'de', 'es'][i]),
+    );
+  }
 
   void _showGenderPicker(UserSettings settings) {
     _showOptionSheet(

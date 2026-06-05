@@ -7,8 +7,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/services/ad_manager.dart';
+import '../../../core/services/share_service.dart';
 import '../../../core/themes/app_theme.dart';
 import '../../../data/models/achievement.dart';
+import '../../../data/models/daily_record.dart';
 import '../../../data/models/water_intake.dart';
 import '../../../data/models/user_settings.dart';
 import '../../providers/water_provider.dart';
@@ -153,7 +155,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               child: Column(
                 children: [
                   // ── Üst başlık ──
-                  _buildHeader(streak),
+                  _buildHeader(streak, record, settings),
                   const SizedBox(height: 8),
 
                   // ── Başarım rozetleri ──
@@ -217,7 +219,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   }
 
   /// Üst başlık: tarih + selamlama + streak
-  Widget _buildHeader(int streak) {
+  Widget _buildHeader(int streak, DailyRecord record, UserSettings settings) {
     final now = DateTime.now();
     final greeting = _getGreeting(now.hour);
     final dateStr = DateFormat('d MMMM, EEEE', 'tr_TR').format(now);
@@ -248,31 +250,49 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               ),
             ],
           ),
-          if (streak > 0)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: Colors.orange.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: Colors.orange.withOpacity(0.4),
-                ),
-              ),
-              child: Row(
-                children: [
-                  const Text('🔥', style: TextStyle(fontSize: 16)),
-                  const SizedBox(width: 4),
-                  Text(
-                    '$streak gün',
-                    style: const TextStyle(
-                      color: Colors.orange,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 13,
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (streak > 0)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: Colors.orange.withOpacity(0.4),
                     ),
                   ),
-                ],
+                  child: Row(
+                    children: [
+                      const Text('🔥', style: TextStyle(fontSize: 16)),
+                      const SizedBox(width: 4),
+                      Text(
+                        '$streak gün',
+                        style: const TextStyle(
+                          color: Colors.orange,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              const SizedBox(width: 8),
+              GestureDetector(
+                onTap: () => ShareService.shareStoryCard(
+                  record: record,
+                  streak: streak,
+                  unit: settings.unit,
+                ),
+                child: Icon(
+                  Icons.share_outlined,
+                  color: aqua.textTertiary,
+                  size: 22,
+                ),
               ),
-            ),
+            ],
+          ),
         ],
       ),
     );

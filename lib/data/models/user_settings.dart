@@ -40,6 +40,7 @@ class UserSettings {
   bool soundEnabled;
   bool hapticEnabled;
   bool healthSyncEnabled;
+  String language; // 'tr' | 'en' | 'de' | 'es'
 
   UserSettings({
     required this.dailyTargetMl,
@@ -69,6 +70,7 @@ class UserSettings {
     required this.soundEnabled,
     required this.hapticEnabled,
     required this.healthSyncEnabled,
+    required this.language,
   });
 
   factory UserSettings.defaults() {
@@ -96,6 +98,7 @@ class UserSettings {
       soundEnabled: true,
       hapticEnabled: true,
       healthSyncEnabled: false,
+      language: 'tr',
     );
   }
 
@@ -147,5 +150,6 @@ class UserSettings {
         soundEnabled: soundEnabled,
         hapticEnabled: hapticEnabled,
         healthSyncEnabled: healthSyncEnabled,
+        language: language,
       );
 }

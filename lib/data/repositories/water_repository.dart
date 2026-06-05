@@ -126,6 +126,7 @@ class WaterRepository {
     s.hapticEnabled = _prefs.getBool('hapticEnabled') ?? s.hapticEnabled;
     s.healthSyncEnabled =
         _prefs.getBool('healthSyncEnabled') ?? s.healthSyncEnabled;
+    s.language = _prefs.getString('language') ?? s.language;
     return s;
   }
 
@@ -174,6 +175,7 @@ class WaterRepository {
     await _prefs.setBool('soundEnabled', s.soundEnabled);
     await _prefs.setBool('hapticEnabled', s.hapticEnabled);
     await _prefs.setBool('healthSyncEnabled', s.healthSyncEnabled);
+    await _prefs.setString('language', s.language);
     _settingsController.add(s);
   }
 

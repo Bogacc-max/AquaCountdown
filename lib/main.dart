@@ -24,6 +24,8 @@ Future<void> main() async {
   // intl Türkçe locale verilerini yükle (DateFormat için zorunlu)
   await initializeDateFormatting('tr_TR', null);
   await initializeDateFormatting('en_US', null);
+  await initializeDateFormatting('de_DE', null);
+  await initializeDateFormatting('es_ES', null);
 
   // Durum çubuğunu şeffaf yap
   SystemChrome.setSystemUIOverlayStyle(
@@ -84,10 +86,12 @@ class AquaCountdownApp extends ConsumerWidget {
           theme: AppTheme.light,
           darkTheme: AppTheme.dark,
           themeMode: themeMode,
-          locale: const Locale('tr', 'TR'),
+          locale: Locale(settings.language, ''),
           supportedLocales: const [
             Locale('tr', 'TR'),
             Locale('en', 'US'),
+            Locale('de', 'DE'),
+            Locale('es', 'ES'),
           ],
           localizationsDelegates: const [
             AppLocalizations.delegate,
