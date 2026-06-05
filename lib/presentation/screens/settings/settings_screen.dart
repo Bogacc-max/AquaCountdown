@@ -363,8 +363,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             subtitle: _appVersion,
           ),
           _SettingsTile(
-            title: 'Gizlilik Politikası',
-            onTap: () => _showPrivacyPolicy(context),
+            title: 'Gizlilik Politikası & KVKK',
+            onTap: () => _launchUrl(
+                'https://celikbogac.github.io/AquaCountdown/privacy.html'),
             trailing: const Icon(
                 Icons.privacy_tip_outlined, color: Colors.white38, size: 16),
           ),
@@ -638,46 +639,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             },
             child: const Text('Sıfırla',
                 style: TextStyle(color: Colors.redAccent)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showPrivacyPolicy(BuildContext ctx) {
-    showDialog(
-      context: ctx,
-      builder: (_) => AlertDialog(
-        backgroundColor: const Color(0xFF0D2137),
-        title: const Text(
-          'Gizlilik Politikası',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-        ),
-        content: SingleChildScrollView(
-          child: Text(
-            'AquaCountdown Gizlilik Politikası\n\n'
-            'Son güncelleme: Mayıs 2025\n\n'
-            '1. Toplanan Veriler\n'
-            'Uygulama, su içme kayıtlarınızı ve ayarlarınızı yalnızca cihazınızda yerel olarak saklar. '
-            'Hiçbir kişisel veri dış sunuculara gönderilmez.\n\n'
-            '2. Veri Kullanımı\n'
-            'Saklanan veriler; günlük ilerlemenizi göstermek, hatırlatma bildirimleri planlamak '
-            've kişisel su hedefinizi hesaplamak için kullanılır.\n\n'
-            '3. Üçüncü Taraf Paylaşımı\n'
-            'Verileriniz üçüncü taraflarla paylaşılmaz, satılmaz veya kiralanmaz.\n\n'
-            '4. İzinler\n'
-            'Bildirim izni: Hatırlatmalar için.\n'
-            'Overlay izni: Yüzen buton için.\n'
-            'Bu izinler isteğe bağlıdır ve uygulama ayarlarından kaldırılabilir.\n\n'
-            '5. İletişim\n'
-            'Sorularınız için: celikbogac@gmail.com',
-            style: const TextStyle(color: Colors.white70, fontSize: 13, height: 1.5),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Tamam', style: TextStyle(color: Color(0xFF00BCD4))),
           ),
         ],
       ),

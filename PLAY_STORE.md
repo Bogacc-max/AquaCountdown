@@ -76,10 +76,10 @@ Sağlık ve Fitness
 Herkes (3+)
 
 ## Gizlilik Politikası URL
-https://aquacountdown.app/privacy
+https://celikbogac.github.io/AquaCountdown/privacy.html
 
 ## Web Sitesi
-https://aquacountdown.app
+https://celikbogac.github.io/AquaCountdown/
 
 ## E-posta
 support@aquacountdown.app
