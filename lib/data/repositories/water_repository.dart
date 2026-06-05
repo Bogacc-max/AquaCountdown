@@ -3,6 +3,7 @@ import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart' as p;
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../models/achievement.dart';
 import '../models/daily_record.dart';
 import '../models/user_settings.dart';
 import '../models/water_intake.dart';
@@ -36,8 +37,9 @@ class WaterRepository {
     final dbPath = p.join(await getDatabasesPath(), 'aquacountdown.db');
     _db = await openDatabase(
       dbPath,
-      version: 1,
+      version: 2,
       onCreate: _onCreate,
+      onUpgrade: _onUpgrade,
     );
   }
 
@@ -62,6 +64,26 @@ class WaterRepository {
 
     await db.execute(
         'CREATE INDEX idx_intakes_timestamp ON water_intakes(timestamp)');
+
+    await db.execute('''
+      CREATE TABLE achievements (
+        id TEXT PRIMARY KEY,
+        unlocked_at INTEGER,
+        progress INTEGER NOT NULL DEFAULT 0
+      )
+    ''');
+  }
+
+  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS achievements (
+          id TEXT PRIMARY KEY,
+          unlocked_at INTEGER,
+          progress INTEGER NOT NULL DEFAULT 0
+        )
+      ''');
+    }
   }
 
   // ─────────────────────────────────────────────────────
@@ -102,7 +124,21 @@ class WaterRepository {
         _prefs.getBool('onboardingCompleted') ?? s.onboardingCompleted;
     s.soundEnabled = _prefs.getBool('soundEnabled') ?? s.soundEnabled;
     s.hapticEnabled = _prefs.getBool('hapticEnabled') ?? s.hapticEnabled;
+    s.healthSyncEnabled =
+        _prefs.getBool('healthSyncEnabled') ?? s.healthSyncEnabled;
     return s;
+  }
+
+  Future<void> updateTodayTarget(int newTargetMl) async {
+    final today = DailyRecord.formatDate(DateTime.now());
+    await _db.update(
+      'daily_records',
+      {'target_ml': newTargetMl},
+      where: 'date_key = ?',
+      whereArgs: [today],
+    );
+    final updated = await getTodayRecord();
+    _todayController.add(updated);
   }
 
   Future<void> saveSettings(UserSettings s) async {
@@ -137,6 +173,7 @@ class WaterRepository {
     await _prefs.setBool('onboardingCompleted', s.onboardingCompleted);
     await _prefs.setBool('soundEnabled', s.soundEnabled);
     await _prefs.setBool('hapticEnabled', s.hapticEnabled);
+    await _prefs.setBool('healthSyncEnabled', s.healthSyncEnabled);
     _settingsController.add(s);
   }
 
@@ -259,23 +296,6 @@ class WaterRepository {
     return saved;
   }
 
-  Future<void> _ensureTodayRecord(String today, int addedMl) async {
-    final rows = await _db.query('daily_records',
-        where: 'date_key = ?', whereArgs: [today]);
-    if (rows.isEmpty) {
-      final settings = await getSettings();
-      await _db.insert('daily_records', {
-        'date_key': today,
-        'consumed_ml': addedMl,
-        'target_ml': settings.dailyTargetMl,
-      });
-    } else {
-      await _db.execute(
-          'UPDATE daily_records SET consumed_ml = consumed_ml + ? WHERE date_key = ?',
-          [addedMl, today]);
-    }
-  }
-
   Future<void> deleteIntake(int intakeId) async {
     final rows = await _db.query('water_intakes',
         where: 'id = ?', whereArgs: [intakeId]);
@@ -351,6 +371,84 @@ class WaterRepository {
       checkDate = checkDate.subtract(const Duration(days: 1));
     }
     return streak;
+  }
+
+  // ─────────────────────────────────────────────────────
+  // BAŞARIMLAR
+  // ─────────────────────────────────────────────────────
+
+  Future<List<Achievement>> getAchievements() async {
+    final all = Achievement.all();
+    final rows = await _db.query('achievements');
+    final Map<String, Map<String, dynamic>> saved = {
+      for (final r in rows) r['id'] as String: r
+    };
+
+    for (final a in all) {
+      final row = saved[a.id];
+      if (row != null) {
+        a.progress = row['progress'] as int? ?? 0;
+        final unlockedAt = row['unlocked_at'] as int?;
+        if (unlockedAt != null) {
+          a.unlockedAt = DateTime.fromMillisecondsSinceEpoch(unlockedAt);
+        }
+      }
+    }
+    return all;
+  }
+
+  Future<void> unlockAchievement(String id) async {
+    await _db.insert(
+      'achievements',
+      {
+        'id': id,
+        'unlocked_at': DateTime.now().millisecondsSinceEpoch,
+        'progress': 1,
+      },
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  Future<void> updateAchievementProgress(String id, int progress) async {
+    final existing = await _db.query('achievements',
+        where: 'id = ?', whereArgs: [id]);
+    if (existing.isEmpty) {
+      await _db.insert('achievements', {
+        'id': id,
+        'progress': progress,
+      });
+    } else {
+      await _db.update(
+        'achievements',
+        {'progress': progress},
+        where: 'id = ?',
+        whereArgs: [id],
+      );
+    }
+  }
+
+  Future<int> getTotalConsumedAllTime() async {
+    final result = await _db.rawQuery(
+        'SELECT COALESCE(SUM(consumed_ml), 0) as total FROM daily_records');
+    return result.first['total'] as int? ?? 0;
+  }
+
+  Future<String> exportToCsv() async {
+    final buffer = StringBuffer();
+    buffer.writeln('date,consumed_ml,target_ml,goal_reached');
+
+    final rows = await _db.query(
+      'daily_records',
+      orderBy: 'date_key ASC',
+    );
+
+    for (final row in rows) {
+      final record = DailyRecord.fromMap(row);
+      buffer.writeln(
+        '${record.dateKey},${record.consumedMl},${record.targetMl},${record.goalReached}',
+      );
+    }
+    return buffer.toString();
   }
 
   Future<void> resetAllData() async {

@@ -1,30 +1,89 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-
-import 'package:aquacountdown/main.dart';
+import 'package:aquacountdown/data/models/daily_record.dart';
+import 'package:aquacountdown/data/models/water_intake.dart';
+import 'package:aquacountdown/data/models/user_settings.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  group('DailyRecord', () {
+    test('remainingMl clamps to 0', () {
+      final record = DailyRecord(
+        dateKey: '2025-06-01',
+        consumedMl: 3000,
+        targetMl: 2500,
+      );
+      expect(record.remainingMl, 0);
+    });
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    test('progressRatio clamps to 1.0', () {
+      final record = DailyRecord(
+        dateKey: '2025-06-01',
+        consumedMl: 3000,
+        targetMl: 2500,
+      );
+      expect(record.progressRatio, 1.0);
+    });
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
+    test('goalReached is true when consumed >= target', () {
+      final record = DailyRecord(
+        dateKey: '2025-06-01',
+        consumedMl: 2500,
+        targetMl: 2500,
+      );
+      expect(record.goalReached, true);
+    });
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    test('formatDate produces correct format', () {
+      final date = DateTime(2025, 1, 5);
+      expect(DailyRecord.formatDate(date), '2025-01-05');
+    });
+  });
+
+  group('WaterIntake', () {
+    test('create sets timestamp to now if not provided', () {
+      final before = DateTime.now();
+      final intake = WaterIntake.create(amountMl: 200);
+      final after = DateTime.now();
+      expect(intake.timestamp.isAfter(before.subtract(const Duration(seconds: 1))), true);
+      expect(intake.timestamp.isBefore(after.add(const Duration(seconds: 1))), true);
+      expect(intake.amountMl, 200);
+    });
+
+    test('fromMap and toMap roundtrip', () {
+      final original = WaterIntake(
+        id: 1,
+        timestamp: DateTime(2025, 6, 1, 14, 30),
+        amountMl: 330,
+        glassType: 'bottle',
+      );
+      final map = original.toMap();
+      final restored = WaterIntake.fromMap(map);
+      expect(restored.amountMl, 330);
+      expect(restored.glassType, 'bottle');
+      expect(restored.isDeleted, false);
+    });
+
+    test('displayText formats correctly', () {
+      expect(WaterIntake.create(amountMl: 500).displayText, '500 ml');
+      expect(WaterIntake.create(amountMl: 1500).displayText, '1.5 L');
+    });
+  });
+
+  group('UserSettings', () {
+    test('calculateTarget returns clamped value', () {
+      final target = UserSettings.calculateTarget(
+        weightKg: 70,
+        activityLevel: 'medium',
+        gender: 'male',
+      );
+      expect(target, greaterThanOrEqualTo(1000));
+      expect(target, lessThanOrEqualTo(6000));
+    });
+
+    test('defaults creates valid settings', () {
+      final settings = UserSettings.defaults();
+      expect(settings.dailyTargetMl, 2500);
+      expect(settings.onboardingCompleted, false);
+      expect(settings.unit, 'ml');
+    });
   });
 }

@@ -327,12 +327,15 @@ class FloatingBubbleService : Service() {
         val currentRemaining = prefs.getInt(WaterWallpaperService.KEY_REMAINING_ML, 2500)
         val newRemaining = (currentRemaining - amountMl).coerceAtLeast(0)
 
-        // Birikimli kayıt: uygulama kapalıyken birden fazla tap kaybolmasın
-        val accumulated = prefs.getInt("last_intake_amount", 0) + amountMl
+        // Her tap'ı ayrı kayıt olarak JSON dizisine ekle
+        val existing = prefs.getString("pending_intakes_json", "[]") ?: "[]"
+        val entry = """{"amount_ml":$amountMl,"timestamp":${System.currentTimeMillis()}}"""
+        val updated = if (existing == "[]") "[$entry]"
+            else "${existing.dropLast(1)},$entry]"
+
         prefs.edit()
             .putInt(WaterWallpaperService.KEY_REMAINING_ML, newRemaining)
-            .putLong("last_intake_time", System.currentTimeMillis())
-            .putInt("last_intake_amount", accumulated)
+            .putString("pending_intakes_json", updated)
             .apply()
 
         // Bildirimi güncelle

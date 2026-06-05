@@ -129,6 +129,7 @@ class NativeBridge {
     required int remainingMl,
     required int targetMl,
     String unit = 'ml',
+    String themeId = 'classic',
   }) async {
     try {
       await _waterChannel.invokeMethod('syncWaterData', {
@@ -139,15 +140,20 @@ class NativeBridge {
     } on PlatformException {
       // Sessizce geç
     }
+
+    // Wallpaper'ı da güncelle
+    await updateWallpaperData(
+      remainingMl: remainingMl,
+      targetMl: targetMl,
+      themeId: themeId,
+      unit: unit,
+    );
   }
 
   /// Bubble servisi tarafından eklenen bekleyen kayıtları al
-  static Future<Map<String, dynamic>?> getPendingIntakes() async {
+  static Future<dynamic> getPendingIntakes() async {
     try {
-      final result =
-          await _waterChannel.invokeMethod<Map>('getPendingIntakes');
-      if (result == null) return null;
-      return Map<String, dynamic>.from(result);
+      return await _waterChannel.invokeMethod('getPendingIntakes');
     } on PlatformException {
       return null;
     }

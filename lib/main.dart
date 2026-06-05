@@ -7,6 +7,7 @@ import 'package:timezone/data/latest.dart' as tz;
 
 import 'core/platform/native_bridge.dart';
 import 'core/platform/notification_service.dart';
+import 'core/services/ad_manager.dart';
 import 'core/themes/app_theme.dart';
 import 'data/repositories/water_repository.dart';
 import 'presentation/providers/water_provider.dart';
@@ -43,6 +44,15 @@ Future<void> main() async {
 
   // Bildirim servisini başlat
   await NotificationService.instance.initialize();
+
+  // Reklam servisini başlat
+  await AdManager.instance.initialize();
+
+  // Bildirim action butonundan su ekleme
+  NotificationService.setQuickAddHandler((amountMl) async {
+    final repo = await WaterRepository.getInstance();
+    await repo.addIntake(amountMl: amountMl, glassType: 'notification');
+  });
 
   runApp(
     const ProviderScope(

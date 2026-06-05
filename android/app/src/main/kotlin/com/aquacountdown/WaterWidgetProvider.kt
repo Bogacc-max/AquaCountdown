@@ -128,16 +128,15 @@ class WaterWidgetProvider : AppWidgetProvider() {
         val currentRemaining = prefs.getInt("remaining_ml", 2000)
         val newRemaining = (currentRemaining - amountMl).coerceAtLeast(0)
 
+        // Her tap'ı ayrı kayıt olarak JSON dizisine ekle
+        val existing = prefs.getString("pending_intakes_json", "[]") ?: "[]"
+        val entry = """{"amount_ml":$amountMl,"timestamp":${System.currentTimeMillis()}}"""
+        val updated = if (existing == "[]") "[$entry]"
+            else "${existing.dropLast(1)},$entry]"
+
         prefs.edit()
             .putInt("remaining_ml", newRemaining)
-            .putLong("last_update_ts", System.currentTimeMillis())
-            .apply()
-
-        // Birikimli kayıt (uygulama kapalıysa _flushPendingBubbleIntakes yakalar)
-        val accumulated = prefs.getInt("last_intake_amount", 0) + amountMl
-        prefs.edit()
-            .putInt("last_intake_amount", accumulated)
-            .putLong("last_intake_time", System.currentTimeMillis())
+            .putString("pending_intakes_json", updated)
             .apply()
 
         // Flutter'a bildir (MainActivity'deki BroadcastReceiver yakalar)

@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'bottle_theme.dart';
 
 /// AquaCountdown Bardak Widget
 ///
@@ -27,6 +28,12 @@ class BottleWidget extends StatefulWidget {
   /// Tamamlandı kutlaması
   final bool showCelebration;
 
+  /// Bardak teması
+  final String themeId;
+
+  /// Splash efekti göster
+  final bool showSplash;
+
   const BottleWidget({
     super.key,
     required this.fillRatio,
@@ -35,6 +42,8 @@ class BottleWidget extends StatefulWidget {
     this.unit = 'ml',
     this.size = 280,
     this.showCelebration = false,
+    this.themeId = 'classic',
+    this.showSplash = false,
   });
 
   @override
@@ -42,7 +51,7 @@ class BottleWidget extends StatefulWidget {
 }
 
 class _BottleWidgetState extends State<BottleWidget>
-    with TickerProviderStateMixin {
+    with TickerProviderStateMixin, WidgetsBindingObserver {
   // Dalga animasyon kontrolcüsü
   late AnimationController _waveController;
   // Su seviyesi geçiş kontrolcüsü
@@ -50,6 +59,8 @@ class _BottleWidgetState extends State<BottleWidget>
   late Animation<double> _levelAnimation;
   // Parıltı animasyonu
   late AnimationController _glowController;
+  // Splash efekti
+  late AnimationController _splashController;
 
   double _previousFill = 1.0;
 
@@ -58,6 +69,7 @@ class _BottleWidgetState extends State<BottleWidget>
     super.initState();
 
     _previousFill = widget.fillRatio;
+    WidgetsBinding.instance.addObserver(this);
 
     // Sürekli dönen dalga animasyonu
     _waveController = AnimationController(
@@ -83,6 +95,11 @@ class _BottleWidgetState extends State<BottleWidget>
       vsync: this,
       duration: const Duration(seconds: 1),
     )..repeat(reverse: true);
+
+    _splashController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
   }
 
   @override
@@ -99,29 +116,55 @@ class _BottleWidgetState extends State<BottleWidget>
       _levelController.forward(from: 0);
       _previousFill = widget.fillRatio;
     }
+    if (widget.showSplash && !old.showSplash) {
+      _splashController.forward(from: 0);
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused) {
+      _waveController.stop();
+      _glowController.stop();
+    } else if (state == AppLifecycleState.resumed) {
+      _waveController.repeat();
+      _glowController.repeat(reverse: true);
+    }
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _waveController.dispose();
     _levelController.dispose();
     _glowController.dispose();
+    _splashController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
+    final semanticLabel = widget.remainingMl <= 0
+        ? 'Günlük su hedefi tamamlandı'
+        : '${widget.remainingMl} mililitre su kaldı, hedef ${widget.targetMl} mililitre';
+
+    return Semantics(
+      label: semanticLabel,
+      value: '${(widget.fillRatio * 100).round()} yüzde dolu',
+      child: AnimatedBuilder(
       animation: Listenable.merge([
         _waveController,
         _levelAnimation,
         _glowController,
+        _splashController,
       ]),
       builder: (context, child) {
         return SizedBox(
           width: widget.size,
           height: widget.size * 1.5,
           child: CustomPaint(
+            isComplex: true,
+            willChange: true,
             painter: _BottlePainter(
               fillRatio: _levelAnimation.value,
               wavePhase: _waveController.value * 2 * pi,
@@ -131,10 +174,13 @@ class _BottleWidgetState extends State<BottleWidget>
               glowIntensity: widget.remainingMl <= 500
                   ? _glowController.value
                   : 0.0,
+              themeData: BottleThemeData.fromId(widget.themeId),
+              splashProgress: _splashController.value,
             ),
           ),
         );
       },
+    ),
     );
   }
 }
@@ -150,6 +196,8 @@ class _BottlePainter extends CustomPainter {
   final int targetMl;
   final String unit;
   final double glowIntensity;
+  final BottleThemeData themeData;
+  final double splashProgress;
 
   _BottlePainter({
     required this.fillRatio,
@@ -158,6 +206,8 @@ class _BottlePainter extends CustomPainter {
     required this.targetMl,
     required this.unit,
     required this.glowIntensity,
+    required this.themeData,
+    required this.splashProgress,
   });
 
   @override
@@ -173,8 +223,7 @@ class _BottlePainter extends CustomPainter {
     final cupRight = cupLeft + cupW;
     final cupBottom = cupTop + cupH;
 
-    // Bardak path'i (hafif trapezoid)
-    final cupPath = _buildCupPath(cupLeft, cupTop, cupRight, cupBottom);
+    final cupPath = themeData.buildCupPath(cupLeft, cupTop, cupRight, cupBottom);
 
     // ── Arkaplan (boş bardak) ──
     final bgPaint = Paint()
@@ -187,6 +236,14 @@ class _BottlePainter extends CustomPainter {
       canvas.save();
       canvas.clipPath(cupPath);
       _drawWater(canvas, size, cupLeft, cupTop, cupRight, cupBottom);
+      canvas.restore();
+    }
+
+    // ── Splash efekti ──
+    if (splashProgress > 0 && splashProgress < 1 && fillRatio > 0) {
+      canvas.save();
+      canvas.clipPath(cupPath);
+      _drawSplash(canvas, cupLeft, cupTop, cupRight, cupBottom);
       canvas.restore();
     }
 
@@ -205,24 +262,6 @@ class _BottlePainter extends CustomPainter {
     _drawLabels(canvas, size, cupBottom);
   }
 
-  /// Bardak trapezoid şekli
-  Path _buildCupPath(
-      double l, double t, double r, double b) {
-    final narrowing = (r - l) * 0.07;
-    const radius = 14.0;
-    return Path()
-      ..moveTo(l + radius, t)
-      ..lineTo(r - radius, t)
-      ..quadraticBezierTo(r, t, r, t + radius)
-      ..lineTo(r - narrowing, b - radius)
-      ..quadraticBezierTo(r - narrowing, b, r - narrowing - radius, b)
-      ..lineTo(l + narrowing + radius, b)
-      ..quadraticBezierTo(l + narrowing, b, l + narrowing, b - radius)
-      ..lineTo(l, t + radius)
-      ..quadraticBezierTo(l, t, l + radius, t)
-      ..close();
-  }
-
   /// Su katmanı + dalga yüzeyi
   void _drawWater(
     Canvas canvas,
@@ -231,7 +270,7 @@ class _BottlePainter extends CustomPainter {
   ) {
     final cupH = b - t;
     final waterY = b - cupH * fillRatio;
-    final waterColor = _colorForLevel(remainingMl);
+    final waterColor = themeData.colorForLevel(remainingMl);
 
     final waterPath = Path()..moveTo(l, b)..lineTo(r, b)..lineTo(r, waterY);
 
@@ -241,8 +280,8 @@ class _BottlePainter extends CustomPainter {
     for (int i = steps; i >= 0; i--) {
       final x = l + (width * i / steps);
       final rel = (x - l) / width;
-      final wave1 = sin(wavePhase + rel * 2 * pi) * 7.0;
-      final wave2 = sin(wavePhase * 0.7 + rel * 3 * pi) * 4.0;
+      final wave1 = sin(wavePhase + rel * 2 * pi) * themeData.waveAmplitude1;
+      final wave2 = sin(wavePhase * 0.7 + rel * 3 * pi) * themeData.waveAmplitude2;
       waterPath.lineTo(x, waterY + wave1 + wave2);
     }
     waterPath.close();
@@ -308,13 +347,35 @@ class _BottlePainter extends CustomPainter {
     final cx = (l + r) / 2;
     final cy = (t + b) / 2;
     final paint = Paint()
-      ..color = const Color(0xFFFFD54F).withOpacity(glowIntensity * 0.25)
+      ..color = themeData.glowColor.withOpacity(glowIntensity * 0.25)
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 20);
     canvas.drawCircle(
       Offset(cx, cy),
       (r - l) * 0.55,
       paint,
     );
+  }
+
+  void _drawSplash(Canvas canvas, double l, double t, double r, double b) {
+    final cupH = b - t;
+    final waterY = b - cupH * fillRatio;
+    final cx = (l + r) / 2;
+    final maxRadius = (r - l) * 0.4;
+    final opacity = (1.0 - splashProgress) * 0.5;
+
+    for (int i = 0; i < 3; i++) {
+      final ringProgress = (splashProgress + i * 0.15).clamp(0.0, 1.0);
+      final radius = maxRadius * ringProgress;
+      final ringOpacity = (opacity * (1.0 - i * 0.25)).clamp(0.0, 1.0);
+      canvas.drawCircle(
+        Offset(cx, waterY),
+        radius,
+        Paint()
+          ..color = Colors.white.withOpacity(ringOpacity)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2.5 - i * 0.5,
+      );
+    }
   }
 
   /// Bardak altı etiketler: "2.5 L" ve "kaldı"
@@ -378,20 +439,12 @@ class _BottlePainter extends CustomPainter {
     return '$ml ml';
   }
 
-  Color _colorForLevel(int ml) {
-    if (ml <= 0) return const Color(0xFF26C6DA);
-    if (ml <= 250) return const Color(0xFFFFD54F);
-    if (ml <= 500) return const Color(0xFF26C6DA);
-    if (ml <= 1000) return const Color(0xFF00BCD4);
-    if (ml <= 2000) return const Color(0xFF039BE5);
-    if (ml <= 3000) return const Color(0xFF0288D1);
-    return const Color(0xFF0277BD);
-  }
-
   @override
   bool shouldRepaint(_BottlePainter old) =>
       old.fillRatio != fillRatio ||
       old.wavePhase != wavePhase ||
       old.remainingMl != remainingMl ||
-      old.glowIntensity != glowIntensity;
+      old.glowIntensity != glowIntensity ||
+      old.themeData.id != themeData.id ||
+      old.splashProgress != splashProgress;
 }

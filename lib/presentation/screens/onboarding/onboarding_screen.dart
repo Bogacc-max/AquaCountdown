@@ -1,8 +1,10 @@
+import 'package:confetti/confetti.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/platform/native_bridge.dart';
+import '../../../core/platform/notification_service.dart';
 import '../../../data/models/user_settings.dart';
 import '../../providers/water_provider.dart';
 import '../home/home_screen.dart';
@@ -88,6 +90,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 
     await ref.read(settingsProvider.notifier).save(settings);
 
+    // İlk bildirim zamanlamalarını ayarla
+    await NotificationService.instance.scheduleReminders(settings);
+
     if (mounted) {
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (_) => const HomeScreen()),
@@ -170,7 +175,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       child: Row(
         children: List.generate(_totalPages, (i) {
           return Expanded(
-            child: Container(
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
               height: 3,
               margin: const EdgeInsets.symmetric(horizontal: 2),
               decoration: BoxDecoration(
@@ -191,9 +197,32 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 // SAYFA 1: HOŞGELDİN
 // ─────────────────────────────────────────────────────
 
-class _WelcomePage extends StatelessWidget {
+class _WelcomePage extends StatefulWidget {
   final VoidCallback onNext;
   const _WelcomePage({required this.onNext});
+
+  @override
+  State<_WelcomePage> createState() => _WelcomePageState();
+}
+
+class _WelcomePageState extends State<_WelcomePage>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _pulseController;
+
+  @override
+  void initState() {
+    super.initState();
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _pulseController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -202,8 +231,13 @@ class _WelcomePage extends StatelessWidget {
       child: Column(
         children: [
           const Spacer(),
-          // Animasyonlu ikon
-          const Icon(Icons.water_drop, size: 96, color: Color(0xFF00BCD4)),
+          AnimatedBuilder(
+            animation: _pulseController,
+            builder: (_, __) => Transform.scale(
+              scale: 1.0 + _pulseController.value * 0.15,
+              child: const Icon(Icons.water_drop, size: 96, color: Color(0xFF00BCD4)),
+            ),
+          ),
           const SizedBox(height: 24),
           const Text(
             'AquaCountdown\'a\nHoşgeldin!',
@@ -246,7 +280,7 @@ class _WelcomePage extends StatelessWidget {
             ),
           ),
           const Spacer(),
-          _OnboardingButton(label: 'Başlayalım', onTap: onNext),
+          _OnboardingButton(label: 'Başlayalım', onTap: widget.onNext),
           const SizedBox(height: 8),
         ],
       ),
@@ -403,7 +437,7 @@ class _ProfilePage extends StatelessWidget {
 // SAYFA 3: HEDEF
 // ─────────────────────────────────────────────────────
 
-class _GoalPage extends StatelessWidget {
+class _GoalPage extends StatefulWidget {
   final int calculatedTarget;
   final int finalTarget;
   final ValueChanged<int> onTargetChanged;
@@ -419,6 +453,49 @@ class _GoalPage extends StatelessWidget {
   });
 
   @override
+  State<_GoalPage> createState() => _GoalPageState();
+}
+
+class _GoalPageState extends State<_GoalPage>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _countController;
+  late Animation<int> _countAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _countController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    );
+    _countAnimation = IntTween(begin: 0, end: widget.calculatedTarget)
+        .animate(CurvedAnimation(
+      parent: _countController,
+      curve: Curves.easeOutCubic,
+    ));
+    _countController.forward();
+  }
+
+  @override
+  void didUpdateWidget(_GoalPage old) {
+    super.didUpdateWidget(old);
+    if (old.calculatedTarget != widget.calculatedTarget) {
+      _countAnimation = IntTween(begin: 0, end: widget.calculatedTarget)
+          .animate(CurvedAnimation(
+        parent: _countController,
+        curve: Curves.easeOutCubic,
+      ));
+      _countController.forward(from: 0);
+    }
+  }
+
+  @override
+  void dispose() {
+    _countController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.all(24),
@@ -432,7 +509,6 @@ class _GoalPage extends StatelessWidget {
           ),
           const Spacer(),
 
-          // Hesaplanan hedef
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(24),
@@ -450,13 +526,16 @@ class _GoalPage extends StatelessWidget {
             ),
             child: Column(
               children: [
-                Text(
-                  '${(calculatedTarget / 1000).toStringAsFixed(1)} L',
-                  style: const TextStyle(
-                    color: Color(0xFF00BCD4),
-                    fontSize: 56,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: -2,
+                AnimatedBuilder(
+                  animation: _countAnimation,
+                  builder: (_, __) => Text(
+                    '${(_countAnimation.value / 1000).toStringAsFixed(1)} L',
+                    style: const TextStyle(
+                      color: Color(0xFF00BCD4),
+                      fontSize: 56,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: -2,
+                    ),
                   ),
                 ),
                 Text(
@@ -474,7 +553,7 @@ class _GoalPage extends StatelessWidget {
 
           // Manuel düzenleme
           Text(
-            'Özelleştir: ${(finalTarget / 1000).toStringAsFixed(1)} L',
+            'Özelleştir: ${(widget.finalTarget / 1000).toStringAsFixed(1)} L',
             style: const TextStyle(
               color: Colors.white,
               fontSize: 16,
@@ -483,16 +562,16 @@ class _GoalPage extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Slider(
-            value: finalTarget.toDouble(),
+            value: widget.finalTarget.toDouble(),
             min: 1000,
             max: 6000,
             divisions: 50,
             activeColor: const Color(0xFF00BCD4),
             inactiveColor: Colors.white12,
-            onChanged: (v) => onTargetChanged(v.round()),
+            onChanged: (v) => widget.onTargetChanged(v.round()),
           ),
           Text(
-            '1 L ← ${(finalTarget / 1000).toStringAsFixed(1)} L → 6 L',
+            '1 L ← ${(widget.finalTarget / 1000).toStringAsFixed(1)} L → 6 L',
             textAlign: TextAlign.center,
             style: TextStyle(
               color: Colors.white.withOpacity(0.4),
@@ -501,10 +580,10 @@ class _GoalPage extends StatelessWidget {
           ),
 
           const Spacer(),
-          _OnboardingButton(label: 'Bu hedefi kullan', onTap: onNext),
+          _OnboardingButton(label: 'Bu hedefi kullan', onTap: widget.onNext),
           const SizedBox(height: 8),
           TextButton(
-            onPressed: onBack,
+            onPressed: widget.onBack,
             child: const Text('Geri', style: TextStyle(color: Colors.white54)),
           ),
         ],
@@ -669,7 +748,8 @@ class _PermissionsPageState extends State<_PermissionsPage> {
             granted: _notifGranted,
             optional: true,
             onRequest: () async {
-              setState(() => _notifGranted = true);
+              final granted = await NotificationService.instance.requestPermission();
+              setState(() => _notifGranted = granted);
             },
           ),
           const SizedBox(height: 10),
@@ -737,43 +817,88 @@ class _PermissionsPageState extends State<_PermissionsPage> {
 // SAYFA 6: HAZIR!
 // ─────────────────────────────────────────────────────
 
-class _ReadyPage extends StatelessWidget {
+class _ReadyPage extends StatefulWidget {
   final VoidCallback onFinish;
   const _ReadyPage({required this.onFinish});
 
   @override
+  State<_ReadyPage> createState() => _ReadyPageState();
+}
+
+class _ReadyPageState extends State<_ReadyPage> {
+  late ConfettiController _confettiController;
+
+  @override
+  void initState() {
+    super.initState();
+    _confettiController = ConfettiController(
+      duration: const Duration(seconds: 3),
+    );
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _confettiController.play();
+    });
+  }
+
+  @override
+  void dispose() {
+    _confettiController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(28),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Spacer(),
-          const Text('🎉', style: TextStyle(fontSize: 80)),
-          const SizedBox(height: 24),
-          const Text(
-            'Hazırsın!',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 36,
-              fontWeight: FontWeight.bold,
-            ),
+    return Stack(
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(28),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Spacer(),
+              const Text('🎉', style: TextStyle(fontSize: 80)),
+              const SizedBox(height: 24),
+              const Text(
+                'Hazırsın!',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 36,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Bardağın dolu. Boşaltma zamanı! 💧\n\nSu içtiğinde butona basarak'
+                ' bardağını boşalt ve günlük hedefini tamamla.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.6),
+                  fontSize: 15,
+                  height: 1.6,
+                ),
+              ),
+              const Spacer(),
+              _OnboardingButton(label: 'Başla!', onTap: widget.onFinish),
+            ],
           ),
-          const SizedBox(height: 16),
-          Text(
-            'Bardağın dolu. Boşaltma zamanı! 💧\n\nSu içtiğinde butona basarak'
-            ' bardağını boşalt ve günlük hedefini tamamla.',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: Colors.white.withOpacity(0.6),
-              fontSize: 15,
-              height: 1.6,
-            ),
+        ),
+        Align(
+          alignment: Alignment.topCenter,
+          child: ConfettiWidget(
+            confettiController: _confettiController,
+            blastDirectionality: BlastDirectionality.explosive,
+            particleDrag: 0.05,
+            emissionFrequency: 0.06,
+            numberOfParticles: 20,
+            gravity: 0.15,
+            colors: const [
+              Color(0xFF00BCD4),
+              Color(0xFFFFD54F),
+              Color(0xFF4CAF50),
+              Color(0xFFE91E63),
+            ],
           ),
-          const Spacer(),
-          _OnboardingButton(label: 'Başla!', onTap: onFinish),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

@@ -3,6 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import 'package:google_mobile_ads/google_mobile_ads.dart';
+import '../../../core/services/ad_manager.dart';
+import '../../../core/themes/app_theme.dart';
 import '../../../data/models/daily_record.dart';
 import '../../providers/water_provider.dart';
 
@@ -18,29 +21,42 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   DateTime _selectedMonth = DateTime.now();
+  BannerAd? _bannerAd;
+  bool _bannerLoaded = false;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+    _bannerAd = AdManager.instance.createBannerAd(
+      listener: BannerAdListener(
+        onAdLoaded: (_) => setState(() => _bannerLoaded = true),
+        onAdFailedToLoad: (ad, _) {
+          ad.dispose();
+          _bannerAd = null;
+        },
+      ),
+    );
   }
 
   @override
   void dispose() {
+    _bannerAd?.dispose();
     _tabController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final aqua = context.aqua;
     return Scaffold(
-      backgroundColor: const Color(0xFF0A1929),
+      backgroundColor: aqua.scaffoldGradientStart,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF0A1929),
+        backgroundColor: aqua.scaffoldGradientStart,
         elevation: 0,
-        title: const Text(
+        title: Text(
           'Raporlar',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          style: TextStyle(color: aqua.textPrimary, fontWeight: FontWeight.bold),
         ),
         bottom: TabBar(
           controller: _tabController,
@@ -54,15 +70,30 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen>
           ],
         ),
       ),
-      body: TabBarView(
-        controller: _tabController,
+      body: Column(
         children: [
-          _DailyTab(),
-          _WeeklyTab(),
-          _MonthlyTab(
-            selectedMonth: _selectedMonth,
-            onMonthChanged: (m) => setState(() => _selectedMonth = m),
+          Expanded(
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                _DailyTab(),
+                _WeeklyTab(),
+                _MonthlyTab(
+                  selectedMonth: _selectedMonth,
+                  onMonthChanged: (m) => setState(() => _selectedMonth = m),
+                ),
+              ],
+            ),
           ),
+          if (_bannerLoaded && _bannerAd != null)
+            SafeArea(
+              top: false,
+              child: SizedBox(
+                height: _bannerAd!.size.height.toDouble(),
+                width: _bannerAd!.size.width.toDouble(),
+                child: AdWidget(ad: _bannerAd!),
+              ),
+            ),
         ],
       ),
     );
@@ -263,20 +294,20 @@ class _MonthlyTab extends ConsumerWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   IconButton(
-                    icon: const Icon(Icons.chevron_left, color: Colors.white),
+                    icon: Icon(Icons.chevron_left, color: context.aqua.textPrimary),
                     onPressed: () => onMonthChanged(DateTime(
                         selectedMonth.year, selectedMonth.month - 1)),
                   ),
                   Text(
                     DateFormat('MMMM yyyy', 'tr_TR').format(selectedMonth),
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: context.aqua.textPrimary,
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.chevron_right, color: Colors.white),
+                    icon: Icon(Icons.chevron_right, color: context.aqua.textPrimary),
                     onPressed: selectedMonth.month == DateTime.now().month &&
                             selectedMonth.year == DateTime.now().year
                         ? null
@@ -382,7 +413,7 @@ class _HourlyChart extends StatelessWidget {
                   return Text(
                     '$h',
                     style:
-                        const TextStyle(color: Colors.white38, fontSize: 10),
+                        TextStyle(color: context.aqua.textHint, fontSize: 10),
                   );
                 },
               ),
@@ -423,7 +454,7 @@ class _WeeklyBarChart extends StatelessWidget {
             backDrawRodData: BackgroundBarChartRodData(
               show: true,
               toY: target,
-              color: Colors.white.withOpacity(0.06),
+              color: context.aqua.cardBg,
             ),
           ),
         ],
@@ -450,7 +481,7 @@ class _WeeklyBarChart extends StatelessWidget {
                   return Text(
                     name,
                     style:
-                        const TextStyle(color: Colors.white54, fontSize: 11),
+                        TextStyle(color: context.aqua.textHint, fontSize: 11),
                   );
                 },
               ),
@@ -469,27 +500,53 @@ class _ProgressRing extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final percentage = (ratio * 100).round();
     return SizedBox(
       height: 160,
-      child: PieChart(
-        PieChartData(
-          sections: [
-            PieChartSectionData(
-              value: ratio * 100,
-              color: const Color(0xFF00BCD4),
-              radius: 24,
-              title: '',
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          PieChart(
+            PieChartData(
+              sections: [
+                PieChartSectionData(
+                  value: ratio * 100,
+                  color: const Color(0xFF00BCD4),
+                  radius: 24,
+                  title: '',
+                ),
+                PieChartSectionData(
+                  value: (1 - ratio) * 100,
+                  color: context.aqua.cardBg,
+                  radius: 24,
+                  title: '',
+                ),
+              ],
+              centerSpaceRadius: 52,
+              sectionsSpace: 0,
             ),
-            PieChartSectionData(
-              value: (1 - ratio) * 100,
-              color: Colors.white.withOpacity(0.08),
-              radius: 24,
-              title: '',
-            ),
-          ],
-          centerSpaceRadius: 52,
-          sectionsSpace: 0,
-        ),
+          ),
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                '%$percentage',
+                style: TextStyle(
+                  color: context.aqua.textPrimary,
+                  fontSize: 28,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              Text(
+                'tamamlandı',
+                style: TextStyle(
+                  color: context.aqua.textHint,
+                  fontSize: 11,
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -517,17 +574,17 @@ class _MonthlyHeatmap extends StatelessWidget {
 
     final dayNames = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
 
+    final aqua = context.aqua;
     return Column(
       children: [
-        // Gün başlıkları
         Row(
           children: dayNames
               .map((d) => Expanded(
                     child: Text(
                       d,
                       textAlign: TextAlign.center,
-                      style: const TextStyle(
-                          color: Colors.white38, fontSize: 11),
+                      style: TextStyle(
+                          color: aqua.textHint, fontSize: 11),
                     ),
                   ))
               .toList(),
@@ -550,13 +607,13 @@ class _MonthlyHeatmap extends StatelessWidget {
 
             Color cellColor;
             if (record == null) {
-              cellColor = Colors.white.withOpacity(0.06);
+              cellColor = aqua.cardBg;
             } else if (record.goalReached) {
               cellColor = const Color(0xFF4CAF50);
             } else {
               final pct = record.progressRatio;
               cellColor = Color.lerp(
-                Colors.white.withOpacity(0.1),
+                aqua.cardBg,
                 const Color(0xFF00BCD4),
                 pct,
               )!;
@@ -571,7 +628,7 @@ class _MonthlyHeatmap extends StatelessWidget {
                 child: Text(
                   '$day',
                   style: TextStyle(
-                    color: Colors.white.withOpacity(0.7),
+                    color: aqua.textSecondary,
                     fontSize: 11,
                   ),
                 ),
@@ -603,13 +660,14 @@ class _StatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final aqua = context.aqua;
     return Expanded(
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.05),
+          color: aqua.cardBg,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.white.withOpacity(0.08)),
+          border: Border.all(color: aqua.cardBorder),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -626,7 +684,7 @@ class _StatCard extends StatelessWidget {
             ),
             Text(
               label,
-              style: const TextStyle(color: Colors.white38, fontSize: 11),
+              style: TextStyle(color: aqua.textHint, fontSize: 11),
             ),
           ],
         ),
@@ -643,8 +701,8 @@ class _SectionTitle extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       title,
-      style: const TextStyle(
-        color: Colors.white,
+      style: TextStyle(
+        color: context.aqua.textPrimary,
         fontSize: 15,
         fontWeight: FontWeight.bold,
       ),
@@ -665,6 +723,7 @@ class _DayDetailTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final aqua = context.aqua;
     final dayName =
         DateFormat('EEEE, d MMM', 'tr_TR').format(date);
     final consumed = record?.consumedMl ?? 0;
@@ -679,7 +738,7 @@ class _DayDetailTile extends StatelessWidget {
             width: 10,
             height: 10,
             decoration: BoxDecoration(
-              color: reached ? const Color(0xFF4CAF50) : Colors.white24,
+              color: reached ? const Color(0xFF4CAF50) : aqua.cardBorder,
               shape: BoxShape.circle,
             ),
           ),
@@ -687,13 +746,13 @@ class _DayDetailTile extends StatelessWidget {
           Expanded(
             child: Text(
               dayName,
-              style: const TextStyle(color: Colors.white70, fontSize: 13),
+              style: TextStyle(color: aqua.textSecondary, fontSize: 13),
             ),
           ),
           Text(
             '${_fmt(consumed, unit)} / ${_fmt(target, unit)}',
             style: TextStyle(
-              color: reached ? const Color(0xFF4CAF50) : Colors.white54,
+              color: reached ? const Color(0xFF4CAF50) : aqua.textHint,
               fontSize: 12,
               fontWeight: FontWeight.w500,
             ),

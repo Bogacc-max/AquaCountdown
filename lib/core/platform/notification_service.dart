@@ -2,6 +2,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
 
 import '../../data/models/user_settings.dart';
+import 'notification_messages.dart';
 
 /// Bildirim Servisi
 ///
@@ -56,9 +57,19 @@ class NotificationService {
       onDidReceiveNotificationResponse: _onNotificationTap,
     );
 
-    // Android bildirim kanallarını oluştur
     await _createChannels();
     _initialized = true;
+  }
+
+  Future<bool> requestPermission() async {
+    final androidImpl = _plugin
+        .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>();
+    if (androidImpl != null) {
+      final granted = await androidImpl.requestNotificationsPermission();
+      return granted ?? false;
+    }
+    return true;
   }
 
   Future<void> _createChannels() async {
@@ -97,9 +108,17 @@ class NotificationService {
     );
   }
 
+  static Function(int amountMl)? _onQuickAdd;
+
+  static void setQuickAddHandler(Function(int) handler) {
+    _onQuickAdd = handler;
+  }
+
   void _onNotificationTap(NotificationResponse response) {
-    // Bildirime tıklanınca uygulamayı aç
-    // Navigator yönetimi app tarafında yapılır
+    if (response.actionId == 'quick_add_200') {
+      _onQuickAdd?.call(200);
+      return;
+    }
   }
 
   // ─────────────────────────────────────────────────────
@@ -107,7 +126,7 @@ class NotificationService {
   // ─────────────────────────────────────────────────────
 
   /// Ayarlara göre tüm hatırlatma bildirimlerini planla
-  Future<void> scheduleReminders(UserSettings settings) async {
+  Future<void> scheduleReminders(UserSettings settings, {int streak = 0}) async {
     if (!settings.notificationsEnabled) {
       await cancelAllReminders();
       return;
@@ -142,10 +161,12 @@ class NotificationService {
         minute: currentMinute,
       );
 
+      final msg = NotificationMessages.getForTime(currentHour, streak: streak);
+
       await _plugin.zonedSchedule(
         notifId++,
-        '💧 Su içme zamanı!',
-        'Bardağın seni bekliyor. Bir yudum iç!',
+        msg.title,
+        msg.body,
         scheduledDate,
         NotificationDetails(
           android: AndroidNotificationDetails(
@@ -155,6 +176,13 @@ class NotificationService {
             icon: '@drawable/ic_water_drop',
             importance: Importance.defaultImportance,
             priority: Priority.defaultPriority,
+            actions: const <AndroidNotificationAction>[
+              AndroidNotificationAction(
+                'quick_add_200',
+                '💧 200ml İçtim',
+                showsUserInterface: false,
+              ),
+            ],
           ),
           iOS: const DarwinNotificationDetails(),
         ),

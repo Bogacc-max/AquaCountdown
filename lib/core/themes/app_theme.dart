@@ -1,19 +1,108 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-/// AquaCountdown Tasarım Sistemi
-///
-/// Renk paleti:
-///   Primary:        #00BCD4  (Aqua)
-///   Primary Dark:   #006064
-///   Accent:         #FFD54F  (Su damlası altın)
-///   Bg Light:       #F5FBFC
-///   Bg Dark:        #0A1929
-///   Surface:        #FFFFFF / #1A2332
+class AquaColors extends ThemeExtension<AquaColors> {
+  final Color scaffoldGradientStart;
+  final Color scaffoldGradientMid;
+  final Color scaffoldGradientEnd;
+  final Color cardBg;
+  final Color cardBorder;
+  final Color textPrimary;
+  final Color textSecondary;
+  final Color textTertiary;
+  final Color textHint;
+  final Color sheetBg;
+
+  const AquaColors({
+    required this.scaffoldGradientStart,
+    required this.scaffoldGradientMid,
+    required this.scaffoldGradientEnd,
+    required this.cardBg,
+    required this.cardBorder,
+    required this.textPrimary,
+    required this.textSecondary,
+    required this.textTertiary,
+    required this.textHint,
+    required this.sheetBg,
+  });
+
+  static const dark = AquaColors(
+    scaffoldGradientStart: Color(0xFF0A1929),
+    scaffoldGradientMid: Color(0xFF0D2137),
+    scaffoldGradientEnd: Color(0x4D006064),
+    cardBg: Color(0x0DFFFFFF),
+    cardBorder: Color(0x14FFFFFF),
+    textPrimary: Colors.white,
+    textSecondary: Color(0xB3FFFFFF),
+    textTertiary: Color(0x8AFFFFFF),
+    textHint: Color(0x61FFFFFF),
+    sheetBg: Color(0xFF0D2137),
+  );
+
+  static const light = AquaColors(
+    scaffoldGradientStart: Color(0xFFF5FBFC),
+    scaffoldGradientMid: Color(0xFFE8F5F7),
+    scaffoldGradientEnd: Color(0xFFD4EEEF),
+    cardBg: Color(0x0A000000),
+    cardBorder: Color(0x14000000),
+    textPrimary: Color(0xDE000000),
+    textSecondary: Color(0x99000000),
+    textTertiary: Color(0x61000000),
+    textHint: Color(0x42000000),
+    sheetBg: Color(0xFFF5FBFC),
+  );
+
+  @override
+  AquaColors copyWith({
+    Color? scaffoldGradientStart,
+    Color? scaffoldGradientMid,
+    Color? scaffoldGradientEnd,
+    Color? cardBg,
+    Color? cardBorder,
+    Color? textPrimary,
+    Color? textSecondary,
+    Color? textTertiary,
+    Color? textHint,
+    Color? sheetBg,
+  }) =>
+      AquaColors(
+        scaffoldGradientStart: scaffoldGradientStart ?? this.scaffoldGradientStart,
+        scaffoldGradientMid: scaffoldGradientMid ?? this.scaffoldGradientMid,
+        scaffoldGradientEnd: scaffoldGradientEnd ?? this.scaffoldGradientEnd,
+        cardBg: cardBg ?? this.cardBg,
+        cardBorder: cardBorder ?? this.cardBorder,
+        textPrimary: textPrimary ?? this.textPrimary,
+        textSecondary: textSecondary ?? this.textSecondary,
+        textTertiary: textTertiary ?? this.textTertiary,
+        textHint: textHint ?? this.textHint,
+        sheetBg: sheetBg ?? this.sheetBg,
+      );
+
+  @override
+  AquaColors lerp(AquaColors? other, double t) {
+    if (other == null) return this;
+    return AquaColors(
+      scaffoldGradientStart: Color.lerp(scaffoldGradientStart, other.scaffoldGradientStart, t)!,
+      scaffoldGradientMid: Color.lerp(scaffoldGradientMid, other.scaffoldGradientMid, t)!,
+      scaffoldGradientEnd: Color.lerp(scaffoldGradientEnd, other.scaffoldGradientEnd, t)!,
+      cardBg: Color.lerp(cardBg, other.cardBg, t)!,
+      cardBorder: Color.lerp(cardBorder, other.cardBorder, t)!,
+      textPrimary: Color.lerp(textPrimary, other.textPrimary, t)!,
+      textSecondary: Color.lerp(textSecondary, other.textSecondary, t)!,
+      textTertiary: Color.lerp(textTertiary, other.textTertiary, t)!,
+      textHint: Color.lerp(textHint, other.textHint, t)!,
+      sheetBg: Color.lerp(sheetBg, other.sheetBg, t)!,
+    );
+  }
+}
+
+extension AquaColorsX on BuildContext {
+  AquaColors get aqua => Theme.of(this).extension<AquaColors>()!;
+}
+
 class AppTheme {
   AppTheme._();
 
-  // ─── Renkler ─────────────────────────────────────
   static const primary = Color(0xFF00BCD4);
   static const primaryDark = Color(0xFF006064);
   static const accent = Color(0xFFFFD54F);
@@ -27,6 +116,7 @@ class AppTheme {
   static ThemeData get light => ThemeData(
         useMaterial3: true,
         brightness: Brightness.light,
+        extensions: const [AquaColors.light],
         colorScheme: ColorScheme.fromSeed(
           seedColor: primary,
           brightness: Brightness.light,
@@ -74,6 +164,7 @@ class AppTheme {
   static ThemeData get dark => ThemeData(
         useMaterial3: true,
         brightness: Brightness.dark,
+        extensions: const [AquaColors.dark],
         colorScheme: ColorScheme.fromSeed(
           seedColor: primary,
           brightness: Brightness.dark,

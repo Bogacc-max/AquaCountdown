@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/platform/native_bridge.dart';
+import '../../../core/services/health_service.dart';
+import '../../../core/themes/app_theme.dart';
 import '../../../data/models/user_settings.dart';
 import '../../../data/repositories/water_repository.dart';
+import '../../widgets/bottle_theme.dart';
+import '../../widgets/bottle_widget.dart';
 import '../../providers/water_provider.dart';
 
 /// Ayarlar Ekranı
@@ -36,12 +41,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final settingsAsync = ref.watch(settingsProvider);
 
     return settingsAsync.when(
-      loading: () => const Scaffold(
-        backgroundColor: Color(0xFF0A1929),
-        body: Center(child: CircularProgressIndicator(color: Color(0xFF00BCD4))),
+      loading: () => Scaffold(
+        backgroundColor: context.aqua.scaffoldGradientStart,
+        body: const Center(child: CircularProgressIndicator(color: Color(0xFF00BCD4))),
       ),
       error: (e, _) => Scaffold(
-        backgroundColor: const Color(0xFF0A1929),
+        backgroundColor: context.aqua.scaffoldGradientStart,
         body: Center(child: Text('$e', style: const TextStyle(color: Colors.red))),
       ),
       data: (settings) => _buildBody(settings),
@@ -49,19 +54,63 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   Widget _buildBody(UserSettings settings) {
+    final aqua = context.aqua;
     return Scaffold(
-      backgroundColor: const Color(0xFF0A1929),
+      backgroundColor: aqua.scaffoldGradientStart,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF0A1929),
+        backgroundColor: aqua.scaffoldGradientStart,
         elevation: 0,
-        title: const Text(
+        title: Text(
           'Ayarlar',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          style: TextStyle(color: aqua.textPrimary, fontWeight: FontWeight.bold),
         ),
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          // ─── PROFİL ───────────────────────────────
+          _SectionHeader('👤 Profil'),
+          _SettingsTile(
+            title: 'Cinsiyet',
+            subtitle: _genderLabel(settings.gender),
+            onTap: () => _showGenderPicker(settings),
+          ),
+          _SettingsTile(
+            title: 'Kilo',
+            subtitle: '${settings.weightKg} kg',
+            onTap: () => _showWeightPicker(settings),
+          ),
+          _SettingsTile(
+            title: 'Yaş',
+            subtitle: '${settings.ageYears}',
+            onTap: () => _showAgePicker(settings),
+          ),
+          _SettingsTile(
+            title: 'Aktivite Seviyesi',
+            subtitle: _activityLabel(settings.activityLevel),
+            onTap: () => _showActivityPicker(settings),
+          ),
+          _SettingsTile(
+            title: 'Hedefi Yeniden Hesapla',
+            subtitle: 'Profil bilgilerine göre önerilen hedefi uygula',
+            onTap: () {
+              final newTarget = UserSettings.calculateTarget(
+                weightKg: settings.weightKg,
+                activityLevel: settings.activityLevel,
+                gender: settings.gender,
+              );
+              _saveSettings(settings.copy()..dailyTargetMl = newTarget);
+              ScaffoldMessenger.of(context)
+                ..clearSnackBars()
+                ..showSnackBar(SnackBar(
+                  content: Text('Hedef ${(newTarget / 1000).toStringAsFixed(1)} L olarak güncellendi'),
+                  behavior: SnackBarBehavior.floating,
+                  backgroundColor: const Color(0xFF00BCD4),
+                ));
+            },
+            trailing: const Icon(Icons.refresh, color: Color(0xFF00BCD4), size: 20),
+          ),
+
           // ─── HEDEFLER ───────────────────────────────
           _SectionHeader('🎯 Hedefler'),
           _SettingsTile(
@@ -144,6 +193,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
           // ─── GÖRÜNÜM ────────────────────────────────
           _SectionHeader('🎨 Görünüm'),
+          _SettingsTile(
+            title: 'Bardak Stili',
+            subtitle: BottleThemeData.fromId(settings.bottleTheme).displayName,
+            onTap: () => _showBottleThemePicker(settings),
+          ),
           _SettingsTile(
             title: 'Tema',
             subtitle: _themeLabel(settings.themeMode),
@@ -240,8 +294,32 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
           ),
 
+          // ─── SAĞLIK ───────────────────────────────────
+          _SectionHeader('❤️ Sağlık'),
+          _SettingsTile(
+            title: 'Google Fit / Apple Health',
+            subtitle: 'Su kayıtlarını sağlık uygulamasına yaz',
+            trailing: Switch(
+              value: settings.healthSyncEnabled,
+              onChanged: (v) async {
+                if (v) {
+                  final granted = await HealthService.instance.requestPermission();
+                  if (!granted) return;
+                }
+                _saveSettings(settings.copy()..healthSyncEnabled = v);
+              },
+              activeColor: const Color(0xFF00BCD4),
+            ),
+          ),
+
           // ─── VERİ ────────────────────────────────────
           _SectionHeader('📁 Veri'),
+          _SettingsTile(
+            title: 'Verileri Dışa Aktar (CSV)',
+            onTap: () => _exportData(),
+            trailing: const Icon(
+                Icons.download_outlined, color: Color(0xFF00BCD4), size: 20),
+          ),
           _SettingsTile(
             title: 'Tüm Verileri Sıfırla',
             onTap: () => _confirmReset(context),
@@ -332,9 +410,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     required int selectedIndex,
     required ValueChanged<int> onSelect,
   }) {
+    final aqua = context.aqua;
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF0D2137),
+      backgroundColor: aqua.sheetBg,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -345,17 +424,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             padding: const EdgeInsets.all(16),
             child: Text(
               title,
-              style: const TextStyle(
-                color: Colors.white,
+              style: TextStyle(
+                color: aqua.textPrimary,
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
               ),
             ),
           ),
-          const Divider(color: Colors.white12, height: 1),
+          Divider(color: aqua.cardBorder, height: 1),
           ...List.generate(options.length, (i) => ListTile(
                 title: Text(options[i],
-                    style: const TextStyle(color: Colors.white)),
+                    style: TextStyle(color: aqua.textPrimary)),
                 trailing: i == selectedIndex
                     ? const Icon(Icons.check, color: Color(0xFF00BCD4))
                     : null,
@@ -368,6 +447,28 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         ],
       ),
     );
+  }
+
+  Future<void> _exportData() async {
+    try {
+      final repo = await WaterRepository.getInstance();
+      final csv = await repo.exportToCsv();
+      await Clipboard.setData(ClipboardData(text: csv));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('CSV verileri panoya kopyalandı'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Dışa aktarma başarısız: $e')),
+        );
+      }
+    }
   }
 
   void _confirmReset(BuildContext ctx) {
@@ -465,6 +566,198 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         _ => 'Sistem',
       };
 
+  String _genderLabel(String gender) => switch (gender) {
+        'male' => 'Erkek',
+        'female' => 'Kadın',
+        _ => 'Diğer',
+      };
+
+  String _activityLabel(String level) => switch (level) {
+        'low' => 'Sedanter',
+        'medium' => 'Orta',
+        'high' => 'Aktif',
+        'athlete' => 'Sporcu',
+        _ => 'Orta',
+      };
+
+  void _showGenderPicker(UserSettings settings) {
+    _showOptionSheet(
+      context: context,
+      title: 'Cinsiyet',
+      options: ['Erkek', 'Kadın', 'Diğer'],
+      selectedIndex: ['male', 'female', 'other'].indexOf(settings.gender),
+      onSelect: (i) =>
+          _saveSettings(settings.copy()..gender = ['male', 'female', 'other'][i]),
+    );
+  }
+
+  void _showWeightPicker(UserSettings settings) {
+    int weight = settings.weightKg;
+    final aqua = context.aqua;
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: aqua.sheetBg,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setModal) => Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('Kilo: $weight kg',
+                  style: TextStyle(color: aqua.textPrimary, fontSize: 18, fontWeight: FontWeight.bold)),
+              Slider(
+                value: weight.toDouble(),
+                min: 40,
+                max: 150,
+                divisions: 110,
+                activeColor: const Color(0xFF00BCD4),
+                onChanged: (v) => setModal(() => weight = v.round()),
+              ),
+              const SizedBox(height: 8),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  _saveSettings(settings.copy()..weightKg = weight);
+                },
+                child: const Text('Kaydet'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showAgePicker(UserSettings settings) {
+    int age = settings.ageYears;
+    final aqua = context.aqua;
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: aqua.sheetBg,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setModal) => Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('Yaş: $age',
+                  style: TextStyle(color: aqua.textPrimary, fontSize: 18, fontWeight: FontWeight.bold)),
+              Slider(
+                value: age.toDouble(),
+                min: 10,
+                max: 90,
+                divisions: 80,
+                activeColor: const Color(0xFF00BCD4),
+                onChanged: (v) => setModal(() => age = v.round()),
+              ),
+              const SizedBox(height: 8),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  _saveSettings(settings.copy()..ageYears = age);
+                },
+                child: const Text('Kaydet'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showBottleThemePicker(UserSettings settings) {
+    final themes = BottleThemeData.all;
+    final aqua = context.aqua;
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: aqua.sheetBg,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('Bardak Stili',
+                style: TextStyle(
+                    color: aqua.textPrimary,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold)),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: themes.map((theme) {
+                final selected = settings.bottleTheme == theme.id;
+                return GestureDetector(
+                  onTap: () {
+                    Navigator.pop(context);
+                    _saveSettings(settings.copy()..bottleTheme = theme.id);
+                  },
+                  child: Container(
+                    width: 72,
+                    height: 120,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: selected
+                            ? const Color(0xFF00BCD4)
+                            : aqua.cardBorder,
+                        width: selected ? 2.5 : 1,
+                      ),
+                      color: aqua.cardBg,
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        SizedBox(
+                          width: 48,
+                          height: 64,
+                          child: CustomPaint(
+                            painter: _ThemePreviewPainter(theme),
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          theme.displayName,
+                          style: TextStyle(
+                            color: selected
+                                ? const Color(0xFF00BCD4)
+                                : aqua.textSecondary,
+                            fontSize: 11,
+                            fontWeight:
+                                selected ? FontWeight.bold : FontWeight.normal,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 12),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showActivityPicker(UserSettings settings) {
+    _showOptionSheet(
+      context: context,
+      title: 'Aktivite Seviyesi',
+      options: ['Sedanter', 'Orta', 'Aktif', 'Sporcu'],
+      selectedIndex: ['low', 'medium', 'high', 'athlete'].indexOf(settings.activityLevel),
+      onSelect: (i) => _saveSettings(
+          settings.copy()..activityLevel = ['low', 'medium', 'high', 'athlete'][i]),
+    );
+  }
 }
 
 // ─────────────────────────────────────────────────────
@@ -482,7 +775,7 @@ class _SectionHeader extends StatelessWidget {
       child: Text(
         title,
         style: TextStyle(
-          color: Colors.white.withOpacity(0.5),
+          color: context.aqua.textHint,
           fontSize: 12,
           fontWeight: FontWeight.w600,
           letterSpacing: 0.8,
@@ -509,19 +802,20 @@ class _SettingsTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final aqua = context.aqua;
     return Container(
       margin: const EdgeInsets.only(bottom: 6),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.04),
+        color: aqua.cardBg,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withOpacity(0.06)),
+        border: Border.all(color: aqua.cardBorder),
       ),
       child: ListTile(
         onTap: onTap,
         title: Text(
           title,
           style: TextStyle(
-            color: titleColor ?? Colors.white,
+            color: titleColor ?? aqua.textPrimary,
             fontSize: 14,
             fontWeight: FontWeight.w500,
           ),
@@ -530,7 +824,7 @@ class _SettingsTile extends StatelessWidget {
             ? Text(
                 subtitle!,
                 style: TextStyle(
-                  color: Colors.white.withOpacity(0.45),
+                  color: aqua.textHint,
                   fontSize: 12,
                 ),
               )
@@ -538,9 +832,44 @@ class _SettingsTile extends StatelessWidget {
         trailing: trailing ??
             (onTap != null
                 ? Icon(Icons.chevron_right,
-                    color: Colors.white.withOpacity(0.3), size: 18)
+                    color: aqua.textHint, size: 18)
                 : null),
       ),
     );
   }
+}
+
+class _ThemePreviewPainter extends CustomPainter {
+  final BottleThemeData theme;
+  const _ThemePreviewPainter(this.theme);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final path = theme.buildCupPath(0, 0, size.width, size.height);
+
+    canvas.drawPath(
+      path,
+      Paint()..color = const Color(0x20006064),
+    );
+
+    canvas.save();
+    canvas.clipPath(path);
+    final waterTop = size.height * 0.4;
+    canvas.drawRect(
+      Rect.fromLTRB(0, waterTop, size.width, size.height),
+      Paint()..color = theme.colorForLevel(1500),
+    );
+    canvas.restore();
+
+    canvas.drawPath(
+      path,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.5
+        ..color = const Color(0x60FFFFFF),
+    );
+  }
+
+  @override
+  bool shouldRepaint(_ThemePreviewPainter old) => old.theme.id != theme.id;
 }

@@ -153,20 +153,25 @@ class MainActivity : FlutterActivity() {
                         result.success(null)
                     }
                     "getPendingIntakes" -> {
-                        // Bubble servisi tarafından eklenen su kayıtlarını al
-                        val lastAmount = prefs.getInt("last_intake_amount", 0)
-                        val lastTime = prefs.getLong("last_intake_time", 0)
-                        if (lastAmount > 0 && lastTime > 0) {
+                        val json = prefs.getString("pending_intakes_json", null)
+                        if (json != null && json != "[]") {
                             prefs.edit()
-                                .remove("last_intake_amount")
-                                .remove("last_intake_time")
+                                .remove("pending_intakes_json")
                                 .apply()
-                            result.success(mapOf(
-                                "amount_ml" to lastAmount,
-                                "timestamp" to lastTime
-                            ))
+                            result.success(json)
                         } else {
-                            result.success(null)
+                            // Eski format desteği (geriye dönük uyumluluk)
+                            val lastAmount = prefs.getInt("last_intake_amount", 0)
+                            val lastTime = prefs.getLong("last_intake_time", 0)
+                            if (lastAmount > 0 && lastTime > 0) {
+                                prefs.edit()
+                                    .remove("last_intake_amount")
+                                    .remove("last_intake_time")
+                                    .apply()
+                                result.success("""[{"amount_ml":$lastAmount,"timestamp":$lastTime}]""")
+                            } else {
+                                result.success(null)
+                            }
                         }
                     }
                     else -> result.notImplemented()

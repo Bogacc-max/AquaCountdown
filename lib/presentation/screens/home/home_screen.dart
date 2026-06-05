@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:confetti/confetti.dart';
 import 'package:flutter/material.dart';
@@ -5,6 +6,9 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../../core/services/ad_manager.dart';
+import '../../../core/themes/app_theme.dart';
+import '../../../data/models/achievement.dart';
 import '../../../data/models/water_intake.dart';
 import '../../../data/models/user_settings.dart';
 import '../../providers/water_provider.dart';
@@ -28,28 +32,64 @@ class HomeScreen extends ConsumerStatefulWidget {
 }
 
 class _HomeScreenState extends ConsumerState<HomeScreen>
-    with TickerProviderStateMixin {
-  // Konfeti kontrolcüsü
+    with TickerProviderStateMixin, WidgetsBindingObserver {
   late ConfettiController _confettiController;
-  // Ses oynatıcı
   final AudioPlayer _audioPlayer = AudioPlayer();
-  // Sekme indeksi
   int _currentTab = 0;
   bool _goalCelebrated = false;
+  String _lastDateKey = '';
+  bool _addingWater = false;
+  bool _showSplash = false;
+  StreamSubscription<Achievement>? _achievementSub;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _lastDateKey = _todayKey();
     _confettiController = ConfettiController(
       duration: const Duration(seconds: 3),
     );
+    _achievementSub = TodayRecordNotifier.achievementUnlocks.listen((a) {
+      if (!mounted) return;
+      _confettiController.play();
+      ScaffoldMessenger.of(context)
+        ..clearSnackBars()
+        ..showSnackBar(SnackBar(
+          content: Text('${a.icon} ${a.title} başarımı kazanıldı!'),
+          backgroundColor: const Color(0xFFFFD54F),
+          duration: const Duration(seconds: 3),
+          behavior: SnackBarBehavior.floating,
+        ));
+    });
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _achievementSub?.cancel();
     _confettiController.dispose();
     _audioPlayer.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      final today = _todayKey();
+      if (today != _lastDateKey) {
+        _lastDateKey = today;
+        _goalCelebrated = false;
+        ref.invalidate(todayRecordProvider);
+        ref.invalidate(streakProvider);
+        ref.invalidate(weeklyRecordsProvider);
+      }
+    }
+  }
+
+  String _todayKey() {
+    final now = DateTime.now();
+    return '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
   }
 
   @override
@@ -91,18 +131,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           _goalCelebrated = false;
         }
 
+        final aqua = context.aqua;
+
         return Stack(
           children: [
-            // Arkaplan gradyanı
             Container(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                   colors: [
-                    const Color(0xFF0A1929),
-                    const Color(0xFF0D2137),
-                    const Color(0xFF006064).withOpacity(0.3),
+                    aqua.scaffoldGradientStart,
+                    aqua.scaffoldGradientMid,
+                    aqua.scaffoldGradientEnd,
                   ],
                 ),
               ),
@@ -115,10 +156,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   _buildHeader(streak),
                   const SizedBox(height: 8),
 
+                  // ── Başarım rozetleri ──
+                  _buildAchievementBadges(),
+
                   // ── Bardak widget (ekranın ortası) ──
                   Expanded(
                     flex: 5,
                     child: Center(
+                      child: RepaintBoundary(
                       child: BottleWidget(
                         fillRatio: 1.0 - record.progressRatio,
                         remainingMl: record.remainingMl,
@@ -126,7 +171,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                         unit: settings.unit,
                         size: MediaQuery.of(context).size.width * 0.55,
                         showCelebration: record.goalReached,
+                        themeId: settings.bottleTheme,
+                        showSplash: _showSplash,
                       ),
+                    ),
                     ),
                   ),
 
@@ -173,6 +221,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     final now = DateTime.now();
     final greeting = _getGreeting(now.hour);
     final dateStr = DateFormat('d MMMM, EEEE', 'tr_TR').format(now);
+    final aqua = context.aqua;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
@@ -184,8 +233,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             children: [
               Text(
                 greeting,
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(
+                  color: aqua.textPrimary,
                   fontSize: 22,
                   fontWeight: FontWeight.bold,
                 ),
@@ -193,7 +242,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               Text(
                 dateStr,
                 style: TextStyle(
-                  color: Colors.white.withOpacity(0.6),
+                  color: aqua.textTertiary,
                   fontSize: 13,
                 ),
               ),
@@ -232,6 +281,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   /// Hızlı su ekleme butonları
   Widget _buildQuickAddButtons(UserSettings settings) {
     final amounts = [100, 200, 330, 500];
+    final aqua = context.aqua;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
@@ -243,7 +293,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             child: Text(
               'Ne kadar içtin?',
               style: TextStyle(
-                color: Colors.white.withOpacity(0.6),
+                color: aqua.textTertiary,
                 fontSize: 13,
                 fontWeight: FontWeight.w500,
               ),
@@ -291,7 +341,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             child: Text(
               'Henüz su içmedin. Başlamaya hazır mısın? 💧',
               style: TextStyle(
-                color: Colors.white.withOpacity(0.5),
+                color: context.aqua.textHint,
                 fontSize: 14,
               ),
               textAlign: TextAlign.center,
@@ -305,11 +355,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           itemBuilder: (ctx, i) => _IntakeTile(
             intake: intakes[i],
             unit: settings.unit,
-            onUndo: () {
-              ref
-                  .read(todayRecordProvider.notifier)
-                  .removeIntake(intakes[i].id!);
-            },
+            onUndo: () => _confirmRemoveIntake(intakes[i], settings),
           ),
         );
       },
@@ -318,24 +364,45 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   /// Su ekle — ses + titreşim + state güncelle
   void _addWater(int amountMl, UserSettings settings) {
-    // Titreşim
+    if (_addingWater) return;
+    _addingWater = true;
+    Future.delayed(const Duration(milliseconds: 500), () => _addingWater = false);
+
     if (settings.hapticEnabled) {
       HapticFeedback.mediumImpact();
     }
-    // Su damlası sesi
     if (settings.soundEnabled) {
       _audioPlayer.play(AssetSource('sounds/water_drop.wav'));
     }
     ref.read(todayRecordProvider.notifier).addWater(amountMl: amountMl);
+    AdManager.instance.onWaterAdded();
+
+    setState(() => _showSplash = true);
+    Future.delayed(const Duration(milliseconds: 700), () {
+      if (mounted) setState(() => _showSplash = false);
+    });
+
+    final label = settings.unit == 'oz'
+        ? '${(amountMl / 29.5735).toStringAsFixed(0)} oz'
+        : '$amountMl ml';
+    ScaffoldMessenger.of(context)
+      ..clearSnackBars()
+      ..showSnackBar(SnackBar(
+        content: Text('$label eklendi 💧'),
+        duration: const Duration(seconds: 2),
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: const Color(0xFF00BCD4),
+      ));
   }
 
   /// Özel miktar bottom sheet
   void _showCustomAmountSheet(UserSettings settings) {
     int customMl = settings.defaultGlassSizeMl;
 
+    final aqua = context.aqua;
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF0D2137),
+      backgroundColor: aqua.sheetBg,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -345,10 +412,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text(
+              Text(
                 'Özel Miktar',
                 style: TextStyle(
-                  color: Colors.white,
+                  color: aqua.textPrimary,
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                 ),
@@ -396,10 +463,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   Widget _buildBottomNav() {
     return NavigationBar(
-      backgroundColor: const Color(0xFF0A1929),
+      backgroundColor: context.aqua.scaffoldGradientStart,
       selectedIndex: _currentTab,
       onDestinationSelected: (i) => setState(() => _currentTab = i),
-      indicatorColor: const Color(0xFF00BCD4).withOpacity(0.2),
       destinations: const [
         NavigationDestination(
           icon: Icon(Icons.water_drop_outlined),
@@ -417,6 +483,91 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           label: 'Ayarlar',
         ),
       ],
+    );
+  }
+
+  void _confirmRemoveIntake(WaterIntake intake, UserSettings settings) {
+    final label = settings.unit == 'oz'
+        ? '${(intake.amountMl / 29.5735).toStringAsFixed(0)} oz'
+        : '${intake.amountMl} ml';
+    final time = TimeOfDay.fromDateTime(intake.timestamp).format(context);
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: context.aqua.sheetBg,
+        title: Text('Kaydı Sil', style: TextStyle(color: context.aqua.textPrimary)),
+        content: Text(
+          '$time\'deki $label kaydını silmek istiyor musun?',
+          style: TextStyle(color: context.aqua.textSecondary),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text('İptal', style: TextStyle(color: context.aqua.textHint)),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              ref.read(todayRecordProvider.notifier).removeIntake(intake.id!);
+              ScaffoldMessenger.of(context)
+                ..clearSnackBars()
+                ..showSnackBar(SnackBar(
+                  content: Text('$label kaydı silindi'),
+                  duration: const Duration(seconds: 2),
+                  behavior: SnackBarBehavior.floating,
+                ));
+            },
+            child: const Text('Sil', style: TextStyle(color: Colors.redAccent)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAchievementBadges() {
+    final achievementsAsync = ref.watch(achievementsProvider);
+    return achievementsAsync.when(
+      loading: () => const SizedBox.shrink(),
+      error: (_, __) => const SizedBox.shrink(),
+      data: (list) {
+        final unlocked = list.where((a) => a.isUnlocked).toList();
+        if (unlocked.isEmpty) return const SizedBox.shrink();
+        return SizedBox(
+          height: 32,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            itemCount: unlocked.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 6),
+            itemBuilder: (_, i) => Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFD54F).withOpacity(0.15),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: const Color(0xFFFFD54F).withOpacity(0.3),
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(unlocked[i].icon, style: const TextStyle(fontSize: 14)),
+                  const SizedBox(width: 4),
+                  Text(
+                    unlocked[i].title,
+                    style: const TextStyle(
+                      color: Color(0xFFFFD54F),
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -444,36 +595,41 @@ class _QuickAddButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final aqua = context.aqua;
     final label = unit == 'oz'
         ? '${(amountMl / 29.5735).toStringAsFixed(0)} oz'
         : '$amountMl ml';
 
-    return Material(
-      color: const Color(0xFF00BCD4).withOpacity(0.18),
-      borderRadius: BorderRadius.circular(14),
-      child: InkWell(
+    return Semantics(
+      button: true,
+      label: '$amountMl mililitre su ekle',
+      child: Material(
+        color: const Color(0xFF00BCD4).withOpacity(0.18),
         borderRadius: BorderRadius.circular(14),
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(
-                Icons.water_drop,
-                color: Color(0xFF00BCD4),
-                size: 22,
-              ),
-              const SizedBox(height: 6),
-              Text(
-                label,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(14),
+          onTap: onTap,
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 14),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.water_drop,
+                  color: Color(0xFF00BCD4),
+                  size: 22,
                 ),
-              ),
-            ],
+                const SizedBox(height: 6),
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: aqua.textPrimary,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -487,23 +643,24 @@ class _CustomAmountButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final aqua = context.aqua;
     return Material(
-      color: Colors.white.withOpacity(0.1),
+      color: aqua.cardBg,
       borderRadius: BorderRadius.circular(14),
       child: InkWell(
         borderRadius: BorderRadius.circular(14),
         onTap: onTap,
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 14),
-          child: const Column(
+          child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.add_circle_outline, color: Color(0xFF00BCD4), size: 22),
-              SizedBox(height: 6),
+              const Icon(Icons.add_circle_outline, color: Color(0xFF00BCD4), size: 22),
+              const SizedBox(height: 6),
               Text(
                 'Özel',
                 style: TextStyle(
-                  color: Colors.white70,
+                  color: aqua.textSecondary,
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
                 ),
@@ -529,6 +686,7 @@ class _IntakeTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final aqua = context.aqua;
     final timeStr = TimeOfDay.fromDateTime(intake.timestamp).format(context);
     final amountStr = unit == 'oz'
         ? '${(intake.amountMl / 29.5735).toStringAsFixed(0)} oz'
@@ -550,26 +708,30 @@ class _IntakeTile extends StatelessWidget {
           Text(
             timeStr,
             style: TextStyle(
-              color: Colors.white.withOpacity(0.5),
+              color: aqua.textHint,
               fontSize: 13,
             ),
           ),
           const SizedBox(width: 8),
           Text(
             '— $amountStr',
-            style: const TextStyle(
-              color: Colors.white,
+            style: TextStyle(
+              color: aqua.textPrimary,
               fontSize: 14,
               fontWeight: FontWeight.w500,
             ),
           ),
           const Spacer(),
-          GestureDetector(
-            onTap: onUndo,
-            child: Icon(
-              Icons.undo,
-              color: Colors.white.withOpacity(0.35),
-              size: 18,
+          Semantics(
+            button: true,
+            label: '$amountStr kaydını geri al',
+            child: GestureDetector(
+              onTap: onUndo,
+              child: Icon(
+                Icons.undo,
+                color: aqua.textHint,
+                size: 18,
+              ),
             ),
           ),
         ],

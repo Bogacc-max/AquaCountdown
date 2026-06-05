@@ -39,6 +39,7 @@ class UserSettings {
   bool onboardingCompleted;
   bool soundEnabled;
   bool hapticEnabled;
+  bool healthSyncEnabled;
 
   UserSettings({
     required this.dailyTargetMl,
@@ -67,6 +68,7 @@ class UserSettings {
     required this.onboardingCompleted,
     required this.soundEnabled,
     required this.hapticEnabled,
+    required this.healthSyncEnabled,
   });
 
   factory UserSettings.defaults() {
@@ -93,6 +95,7 @@ class UserSettings {
       onboardingCompleted: false,
       soundEnabled: true,
       hapticEnabled: true,
+      healthSyncEnabled: false,
     );
   }
 
@@ -143,5 +146,6 @@ class UserSettings {
         onboardingCompleted: onboardingCompleted,
         soundEnabled: soundEnabled,
         hapticEnabled: hapticEnabled,
+        healthSyncEnabled: healthSyncEnabled,
       );
 }
