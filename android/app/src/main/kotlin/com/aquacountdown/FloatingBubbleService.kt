@@ -103,7 +103,7 @@ class FloatingBubbleService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             ACTION_ADD_WATER -> {
-                val amount = intent.getIntExtra(EXTRA_AMOUNT_ML, 200)
+                val amount = intent.getIntExtra(EXTRA_AMOUNT_ML, 200).coerceIn(1, 2000)
                 addWaterFromNotification(amount)
             }
             ACTION_SHOW_BUBBLE -> bubbleView.visibility = View.VISIBLE
@@ -324,27 +324,40 @@ class FloatingBubbleService : Service() {
      * Su kaydı ekle ve SharedPreferences + Flutter'a bildir
      */
     private fun addWater(amountMl: Int) {
+        val sanitizedAmount = amountMl.coerceIn(1, 5000)
         val currentRemaining = prefs.getInt(WaterWallpaperService.KEY_REMAINING_ML, 2500)
-        val newRemaining = (currentRemaining - amountMl).coerceAtLeast(0)
+        val newRemaining = (currentRemaining - sanitizedAmount).coerceAtLeast(0)
 
-        // Her tap'ı ayrı kayıt olarak JSON dizisine ekle
-        val existing = prefs.getString("pending_intakes_json", "[]") ?: "[]"
-        val entry = """{"amount_ml":$amountMl,"timestamp":${System.currentTimeMillis()}}"""
-        val updated = if (existing == "[]") "[$entry]"
-            else "${existing.dropLast(1)},$entry]"
+        // Her tap'ı güvenli JSON dizisine ekle (JSONArray ile)
+        try {
+            val existingJson = prefs.getString("pending_intakes_json", "[]") ?: "[]"
+            val jsonArray = org.json.JSONArray(existingJson)
+            val newEntry = org.json.JSONObject().apply {
+                put("amount_ml", sanitizedAmount)
+                put("timestamp", System.currentTimeMillis())
+            }
+            jsonArray.put(newEntry)
 
-        prefs.edit()
-            .putInt(WaterWallpaperService.KEY_REMAINING_ML, newRemaining)
-            .putString("pending_intakes_json", updated)
-            .apply()
+            prefs.edit()
+                .putInt(WaterWallpaperService.KEY_REMAINING_ML, newRemaining)
+                .putString("pending_intakes_json", jsonArray.toString())
+                .apply()
+        } catch (e: Exception) {
+            prefs.edit()
+                .putInt(WaterWallpaperService.KEY_REMAINING_ML, newRemaining)
+                .putString("pending_intakes_json",
+                    """[{"amount_ml":$sanitizedAmount,"timestamp":${System.currentTimeMillis()}}]""")
+                .apply()
+        }
 
-        // Bildirimi güncelle
         updateNotification(newRemaining)
 
-        // Flutter'a broadcast gönder
-        val broadcastIntent = Intent("com.aquacountdown.WATER_ADDED")
-        broadcastIntent.putExtra("amount_ml", amountMl)
-        broadcastIntent.putExtra("remaining_ml", newRemaining)
+        // Broadcast yalnızca kendi pakete kısıtlı
+        val broadcastIntent = Intent("com.aquacountdown.WATER_ADDED").apply {
+            setPackage(packageName)
+            putExtra("amount_ml", sanitizedAmount)
+            putExtra("remaining_ml", newRemaining)
+        }
         sendBroadcast(broadcastIntent)
     }
 

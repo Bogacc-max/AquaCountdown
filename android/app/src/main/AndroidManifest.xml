@@ -2,6 +2,11 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.aquacountdown">
 
+    <!-- Signature-level permission for internal broadcasts -->
+    <permission
+        android:name="com.aquacountdown.permission.INTERNAL"
+        android:protectionLevel="signature" />
+
     <!-- ─────────────────────────────────────────────── -->
     <!-- GEREKLİ İZİNLER                                -->
     <!-- ─────────────────────────────────────────────── -->
@@ -127,7 +132,8 @@
         <!-- Flutter ↔ HomeWidget iletişimi için Activity -->
         <activity
             android:name="es.antonborri.home_widget.HomeWidgetBackgroundActivity"
-            android:exported="true">
+            android:exported="true"
+            android:permission="com.aquacountdown.permission.INTERNAL">
             <intent-filter>
                 <action android:name="es.antonborri.home_widget.action.BACKGROUND" />
             </intent-filter>

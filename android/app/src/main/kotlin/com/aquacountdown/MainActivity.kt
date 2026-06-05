@@ -253,6 +253,10 @@ class MainActivity : FlutterActivity() {
     }
 
     private fun startFloatingBubble() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M &&
+            !Settings.canDrawOverlays(this)) {
+            return
+        }
         val intent = Intent(this, FloatingBubbleService::class.java)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             startForegroundService(intent)

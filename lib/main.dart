@@ -51,6 +51,7 @@ Future<void> main() async {
 
   // Bildirim action butonundan su ekleme
   NotificationService.setQuickAddHandler((amountMl) async {
+    if (amountMl <= 0 || amountMl > 2000) return;
     final repo = await WaterRepository.getInstance();
     await repo.addIntake(amountMl: amountMl, glassType: 'notification');
   });

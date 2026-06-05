@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/models/achievement.dart';
@@ -161,7 +162,9 @@ class TodayRecordNotifier extends StateNotifier<AsyncValue<DailyRecord>> {
               : null,
         );
       }
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('Flush pending intakes failed: $e');
+    }
   }
 
   /// Native baloncuktan gelen su ekleme eventlerini dinle
@@ -169,7 +172,9 @@ class TodayRecordNotifier extends StateNotifier<AsyncValue<DailyRecord>> {
     _nativeSub = NativeBridge.nativeEvents.listen((event) {
       if (event['type'] == 'water_added') {
         final amountMl = event['amount_ml'] as int? ?? 0;
-        if (amountMl > 0) addWater(amountMl: amountMl, fromNative: true);
+        if (amountMl > 0 && amountMl <= 5000) {
+          addWater(amountMl: amountMl, fromNative: true);
+        }
       }
     });
   }

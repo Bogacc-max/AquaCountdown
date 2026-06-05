@@ -49,6 +49,7 @@ class WaterWidgetProvider : AppWidgetProvider() {
 
         if (intent.action == ACTION_WIDGET_ADD_WATER) {
             val amount = intent.getIntExtra(EXTRA_AMOUNT_ML, DEFAULT_ADD_AMOUNT)
+                .coerceIn(1, 2000)
             handleAddWater(context, amount)
         }
     }
@@ -128,16 +129,27 @@ class WaterWidgetProvider : AppWidgetProvider() {
         val currentRemaining = prefs.getInt("remaining_ml", 2000)
         val newRemaining = (currentRemaining - amountMl).coerceAtLeast(0)
 
-        // Her tap'ı ayrı kayıt olarak JSON dizisine ekle
-        val existing = prefs.getString("pending_intakes_json", "[]") ?: "[]"
-        val entry = """{"amount_ml":$amountMl,"timestamp":${System.currentTimeMillis()}}"""
-        val updated = if (existing == "[]") "[$entry]"
-            else "${existing.dropLast(1)},$entry]"
+        // Güvenli JSON dizisi oluşturma (JSONArray ile)
+        try {
+            val existingJson = prefs.getString("pending_intakes_json", "[]") ?: "[]"
+            val jsonArray = org.json.JSONArray(existingJson)
+            val newEntry = org.json.JSONObject().apply {
+                put("amount_ml", amountMl)
+                put("timestamp", System.currentTimeMillis())
+            }
+            jsonArray.put(newEntry)
 
-        prefs.edit()
-            .putInt("remaining_ml", newRemaining)
-            .putString("pending_intakes_json", updated)
-            .apply()
+            prefs.edit()
+                .putInt("remaining_ml", newRemaining)
+                .putString("pending_intakes_json", jsonArray.toString())
+                .apply()
+        } catch (e: Exception) {
+            prefs.edit()
+                .putInt("remaining_ml", newRemaining)
+                .putString("pending_intakes_json",
+                    """[{"amount_ml":$amountMl,"timestamp":${System.currentTimeMillis()}}]""")
+                .apply()
+        }
 
         // Flutter'a bildir (MainActivity'deki BroadcastReceiver yakalar)
         val broadcastIntent = Intent("com.aquacountdown.WATER_ADDED").apply {

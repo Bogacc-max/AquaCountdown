@@ -143,6 +143,10 @@ class WaterRepository {
   }
 
   Future<void> saveSettings(UserSettings s) async {
+    s.dailyTargetMl = s.dailyTargetMl.clamp(500, 10000);
+    s.weightKg = s.weightKg.clamp(20, 250);
+    s.ageYears = s.ageYears.clamp(5, 120);
+    s.defaultGlassSizeMl = s.defaultGlassSizeMl.clamp(50, 2000);
     await _prefs.setInt('dailyTargetMl', s.dailyTargetMl);
     await _prefs.setInt('defaultGlassSizeMl', s.defaultGlassSizeMl);
     await _prefs.setString('gender', s.gender);
@@ -262,6 +266,9 @@ class WaterRepository {
     String glassType = 'default',
     DateTime? timestamp,
   }) async {
+    if (amountMl <= 0 || amountMl > 5000) {
+      throw ArgumentError('amountMl must be between 1 and 5000, got: $amountMl');
+    }
     final intake = WaterIntake.create(
       amountMl: amountMl,
       glassType: glassType,

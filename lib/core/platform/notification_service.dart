@@ -217,6 +217,7 @@ class NotificationService {
     required int remainingMl,
     required int targetMl,
   }) async {
+    if (targetMl <= 0) return;
     final percent = (remainingMl / targetMl * 100).round();
 
     String? title;

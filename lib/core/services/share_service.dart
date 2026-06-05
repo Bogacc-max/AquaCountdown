@@ -26,10 +26,16 @@ class ShareService {
     final file = File('${dir.path}/aquacountdown_story.png');
     await file.writeAsBytes(imageBytes);
 
-    await Share.shareXFiles(
-      [XFile(file.path)],
-      text: 'AquaCountdown ile bugün ${_fmt(record.consumedMl, unit)} su içtim! 💧',
-    );
+    try {
+      await Share.shareXFiles(
+        [XFile(file.path)],
+        text: 'AquaCountdown ile bugün ${_fmt(record.consumedMl, unit)} su içtim! 💧',
+      );
+    } finally {
+      if (await file.exists()) {
+        await file.delete();
+      }
+    }
   }
 
   static Future<Uint8List?> _generateStoryCard({

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:health/health.dart';
 
 class HealthService {
@@ -17,7 +18,8 @@ class HealthService {
         permissions: permissions,
       );
       return _authorized;
-    } catch (_) {
+    } catch (e) {
+      debugPrint('Health permission request failed: $e');
       return false;
     }
   }
@@ -31,6 +33,9 @@ class HealthService {
         startTime: timestamp,
         endTime: timestamp,
       );
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('Health write failed: $e');
+      _authorized = false;
+    }
   }
 }

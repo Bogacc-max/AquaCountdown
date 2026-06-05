@@ -1,6 +1,8 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -588,15 +590,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     try {
       final repo = await WaterRepository.getInstance();
       final csv = await repo.exportToCsv();
-      await Clipboard.setData(ClipboardData(text: csv));
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('CSV verileri panoya kopyalandı'),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
+      final dir = await getTemporaryDirectory();
+      final file = File('${dir.path}/aquacountdown_export.csv');
+      await file.writeAsString(csv);
+      await Share.shareXFiles([XFile(file.path)],
+          subject: 'AquaCountdown Veri Dışa Aktarma');
+      if (await file.exists()) await file.delete();
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

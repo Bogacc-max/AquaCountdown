@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 
 class AdManager {
@@ -20,7 +21,9 @@ class AdManager {
       await MobileAds.instance.initialize();
       _initialized = true;
       _loadInterstitial();
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('AdManager init failed: $e');
+    }
   }
 
   BannerAd createBannerAd({BannerAdListener? listener}) {
