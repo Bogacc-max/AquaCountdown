@@ -26,7 +26,7 @@ class UserSettings {
 
   // ─── Görünüm ─────────────────────────────────────
   String themeMode; // 'light' | 'dark' | 'system'
-  String bottleTheme; // 'classic' | 'modern' | 'nature' | 'premium'
+  String bottleTheme; // 'classic' | 'modern' | 'nature' | 'minimal'
   String unit; // 'ml' | 'oz'
 
   // ─── Native Özellikler ────────────────────────────

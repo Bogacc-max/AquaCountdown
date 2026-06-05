@@ -27,11 +27,10 @@ Future<void> main() async {
   await initializeDateFormatting('de_DE', null);
   await initializeDateFormatting('es_ES', null);
 
-  // Durum çubuğunu şeffaf yap
+  // Durum çubuğunu şeffaf yap (tema'ya göre initState'te güncellenir)
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
-      statusBarIconBrightness: Brightness.light,
     ),
   );
 
@@ -80,6 +79,15 @@ class AquaCountdownApp extends ConsumerWidget {
           _ => ThemeMode.system,
         };
 
+        final isDark = themeMode == ThemeMode.dark ||
+            (themeMode == ThemeMode.system &&
+                MediaQuery.platformBrightnessOf(context) == Brightness.dark);
+        SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle(
+          statusBarColor: Colors.transparent,
+          statusBarIconBrightness:
+              isDark ? Brightness.light : Brightness.dark,
+        ));
+
         return MaterialApp(
           title: 'AquaCountdown',
           debugShowCheckedModeBanner: false,
@@ -114,10 +122,15 @@ class _SplashScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final brightness = MediaQuery.platformBrightnessOf(context);
+    final isDark = brightness == Brightness.dark;
+    final bgColor = isDark ? const Color(0xFF0A1929) : const Color(0xFFF5FBFC);
+    final textColor = isDark ? Colors.white : const Color(0xDE000000);
+
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       home: Scaffold(
-        backgroundColor: const Color(0xFF0A1929),
+        backgroundColor: bgColor,
         body: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -131,7 +144,7 @@ class _SplashScreen extends StatelessWidget {
               Text(
                 'AquaCountdown',
                 style: TextStyle(
-                  color: Colors.white,
+                  color: textColor,
                   fontSize: 28,
                   fontWeight: FontWeight.bold,
                   letterSpacing: 1.2,

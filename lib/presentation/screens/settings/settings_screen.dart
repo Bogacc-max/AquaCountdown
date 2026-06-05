@@ -7,6 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../core/platform/native_bridge.dart';
 import '../../../core/services/health_service.dart';
 import '../../../core/themes/app_theme.dart';
+import '../../../data/models/achievement.dart';
 import '../../../data/models/user_settings.dart';
 import '../../../data/repositories/water_repository.dart';
 import '../../widgets/bottle_theme.dart';
@@ -334,6 +335,28 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ),
 
           // ─── HAKKINDA ────────────────────────────────
+          // ─── BAŞARIMLAR ──────────────────────────────
+          _SectionHeader('🏆 Başarımlar'),
+          Consumer(
+            builder: (ctx, ref, _) {
+              final achievementsAsync = ref.watch(achievementsProvider);
+              return achievementsAsync.when(
+                loading: () => const SizedBox.shrink(),
+                error: (_, __) => const SizedBox.shrink(),
+                data: (list) {
+                  final unlocked = list.where((a) => a.isUnlocked).length;
+                  return _SettingsTile(
+                    title: 'Tüm Başarımlar',
+                    subtitle: '$unlocked/${list.length} kazanıldı',
+                    onTap: () => _showAchievementsSheet(list),
+                    trailing: const Icon(Icons.emoji_events,
+                        color: Color(0xFFFFD54F), size: 20),
+                  );
+                },
+              );
+            },
+          ),
+
           _SectionHeader('ℹ️ Hakkında'),
           _SettingsTile(
             title: 'Versiyon',
@@ -450,6 +473,112 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               )),
           const SizedBox(height: 8),
         ],
+      ),
+    );
+  }
+
+  void _showAchievementsSheet(List<Achievement> achievements) {
+    final aqua = context.aqua;
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: aqua.sheetBg,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => DraggableScrollableSheet(
+        initialChildSize: 0.7,
+        maxChildSize: 0.9,
+        minChildSize: 0.4,
+        expand: false,
+        builder: (ctx, scrollController) => Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Text('Başarımlar',
+                  style: TextStyle(
+                      color: aqua.textPrimary,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold)),
+            ),
+            Divider(color: aqua.cardBorder, height: 1),
+            Expanded(
+              child: ListView.builder(
+                controller: scrollController,
+                padding: const EdgeInsets.all(12),
+                itemCount: achievements.length,
+                itemBuilder: (_, i) {
+                  final a = achievements[i];
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: aqua.cardBg,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: a.isUnlocked
+                            ? const Color(0xFFFFD54F).withOpacity(0.4)
+                            : aqua.cardBorder,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Text(a.icon,
+                            style: TextStyle(
+                                fontSize: 28,
+                                color: a.isUnlocked
+                                    ? null
+                                    : Colors.grey)),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                a.title,
+                                style: TextStyle(
+                                  color: a.isUnlocked
+                                      ? aqua.textPrimary
+                                      : aqua.textHint,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              Text(
+                                a.description,
+                                style: TextStyle(
+                                  color: aqua.textHint,
+                                  fontSize: 12,
+                                ),
+                              ),
+                              if (!a.isUnlocked && a.target > 1) ...[
+                                const SizedBox(height: 6),
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(4),
+                                  child: LinearProgressIndicator(
+                                    value: a.progressRatio,
+                                    backgroundColor: aqua.cardBorder,
+                                    valueColor:
+                                        const AlwaysStoppedAnimation(
+                                            Color(0xFF00BCD4)),
+                                    minHeight: 4,
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                        if (a.isUnlocked)
+                          const Icon(Icons.check_circle,
+                              color: Color(0xFFFFD54F), size: 22),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -25,6 +25,8 @@ abstract class AppLocalizations {
   static const List<Locale> supportedLocales = [
     Locale('tr', 'TR'),
     Locale('en', 'US'),
+    Locale('de', 'DE'),
+    Locale('es', 'ES'),
   ];
 
   // Soyut getter'lar — her dil için impl gerekli
@@ -46,12 +48,16 @@ class _AppLocalizationsDelegate
 
   @override
   bool isSupported(Locale locale) =>
-      ['tr', 'en'].contains(locale.languageCode);
+      ['tr', 'en', 'de', 'es'].contains(locale.languageCode);
 
   @override
   Future<AppLocalizations> load(Locale locale) async {
-    if (locale.languageCode == 'tr') return _AppLocalizationsTr();
-    return _AppLocalizationsEn();
+    return switch (locale.languageCode) {
+      'tr' => _AppLocalizationsTr(),
+      'de' => _AppLocalizationsDe(),
+      'es' => _AppLocalizationsEs(),
+      _ => _AppLocalizationsEn(),
+    };
   }
 
   @override
@@ -86,6 +92,38 @@ class _AppLocalizationsEn extends AppLocalizations {
   @override String get settingsDailyGoal => 'Daily Water Goal';
   @override String get settingsNotifications => 'Notifications';
   @override String get settingsTheme => 'Theme';
+  @override String get unitMl => 'ml';
+  @override String get unitOz => 'oz';
+}
+
+// ─── Almanca ────────────────────────────────────────
+class _AppLocalizationsDe extends AppLocalizations {
+  _AppLocalizationsDe() : super('de');
+
+  @override String get appTitle => 'AquaCountdown';
+  @override String get remaining => 'verbleibend';
+  @override String get goalCompleted => '🎉 Ziel erreicht!';
+  @override String get addWater => 'Wasser hinzufügen';
+  @override String streakDays(int days) => '$days Tage Serie! 🔥';
+  @override String get settingsDailyGoal => 'Tägliches Wasserziel';
+  @override String get settingsNotifications => 'Benachrichtigungen';
+  @override String get settingsTheme => 'Design';
+  @override String get unitMl => 'ml';
+  @override String get unitOz => 'oz';
+}
+
+// ─── İspanyolca ─────────────────────────────────────
+class _AppLocalizationsEs extends AppLocalizations {
+  _AppLocalizationsEs() : super('es');
+
+  @override String get appTitle => 'AquaCountdown';
+  @override String get remaining => 'restante';
+  @override String get goalCompleted => '🎉 ¡Meta completada!';
+  @override String get addWater => 'Agregar agua';
+  @override String streakDays(int days) => '¡$days días de racha! 🔥';
+  @override String get settingsDailyGoal => 'Meta diaria de agua';
+  @override String get settingsNotifications => 'Notificaciones';
+  @override String get settingsTheme => 'Tema';
   @override String get unitMl => 'ml';
   @override String get unitOz => 'oz';
 }
