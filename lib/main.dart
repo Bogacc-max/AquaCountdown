@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:timezone/data/latest.dart' as tz;
 
@@ -16,7 +17,8 @@ import 'presentation/screens/home/home_screen.dart';
 import 'l10n/app_localizations.dart';
 
 Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+  final widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
+  FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
 
   // Zaman dilimi veritabanını başlat (bildirimler için)
   tz.initializeTimeZones();
@@ -74,6 +76,7 @@ class AquaCountdownApp extends ConsumerWidget {
       loading: () => const _SplashScreen(),
       error: (_, __) => const _SplashScreen(),
       data: (settings) {
+        FlutterNativeSplash.remove();
         final themeMode = switch (settings.themeMode) {
           'light' => ThemeMode.light,
           'dark' => ThemeMode.dark,

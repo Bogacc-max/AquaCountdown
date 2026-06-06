@@ -367,7 +367,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           _SettingsTile(
             title: 'Gizlilik Politikası & KVKK',
             onTap: () => _launchUrl(
-                'https://celikbogac.github.io/AquaCountdown/privacy.html'),
+                'https://bogacc-max.github.io/AquaCountdown/privacy.html'),
             trailing: const Icon(
                 Icons.privacy_tip_outlined, color: Colors.white38, size: 16),
           ),
