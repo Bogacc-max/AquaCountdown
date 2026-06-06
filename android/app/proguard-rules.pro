@@ -1,8 +1,16 @@
 # Flutter / AquaCountdown ProGuard kuralları
 
-# Flutter
+# Flutter core
 -keep class io.flutter.** { *; }
 -keep class io.flutter.plugins.** { *; }
+
+# Flutter community plugins (GeneratedPluginRegistrant referansları)
+-keep class dev.fluttercommunity.plus.** { *; }
+-keep class com.ryanheise.** { *; }
+-keep class es.antonborri.** { *; }
+-keep class com.dexterous.** { *; }
+-keep class com.baseflow.** { *; }
+-dontwarn dev.fluttercommunity.plus.**
 
 # AquaCountdown — yalnızca lifecycle/reflection için gerekli metotlar
 -keep class com.aquacountdown.MainActivity {

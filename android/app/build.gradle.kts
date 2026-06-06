@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -5,10 +7,17 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+// key.properties dosyasını oku
+val keyPropertiesFile = rootProject.file("key.properties")
+val keyProperties = Properties()
+if (keyPropertiesFile.exists()) {
+    keyPropertiesFile.inputStream().use { keyProperties.load(it) }
+}
+
 android {
     namespace = "com.aquacountdown"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = flutter.ndkVersion
+    ndkVersion = "28.2.13676358"
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -32,9 +41,18 @@ android {
         multiDexEnabled = true
     }
 
+    signingConfigs {
+        create("release") {
+            keyAlias = keyProperties["keyAlias"] as String?
+            keyPassword = keyProperties["keyPassword"] as String?
+            storeFile = keyProperties["storeFile"]?.let { file(it as String) }
+            storePassword = keyProperties["storePassword"] as String?
+        }
+    }
+
     buildTypes {
         release {
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("release")
             isMinifyEnabled = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
