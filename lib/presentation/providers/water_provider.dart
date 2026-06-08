@@ -119,6 +119,14 @@ class TodayRecordNotifier extends StateNotifier<AsyncValue<DailyRecord>> {
       final record = await repo.getTodayRecord();
       state = AsyncValue.data(record);
 
+      // Native katmanını (duvar kağıdı, widget, baloncuk) güncel veriyle senkronize et
+      final settings = _ref.read(settingsProvider).valueOrNull;
+      await NativeBridge.syncWaterData(
+        remainingMl: record.remainingMl,
+        targetMl: record.targetMl,
+        unit: settings?.unit ?? 'ml',
+      );
+
       // Gece yarısı otomatik yenileme
       _scheduleMidnightRefresh();
 
