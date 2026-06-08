@@ -177,11 +177,14 @@ class TodayRecordNotifier extends StateNotifier<AsyncValue<DailyRecord>> {
 
   /// Native baloncuktan gelen su ekleme eventlerini dinle
   void _listenNativeEvents() {
-    _nativeSub = NativeBridge.nativeEvents.listen((event) {
+    _nativeSub = NativeBridge.nativeEvents.listen((event) async {
       if (event['type'] == 'water_added') {
         final amountMl = event['amount_ml'] as int? ?? 0;
         if (amountMl > 0 && amountMl <= 5000) {
-          addWater(amountMl: amountMl, fromNative: true);
+          // EventChannel bu kaydı işleyecek — pending kuyruğunu temizle
+          // yoksa resume'da _flushPendingBubbleIntakes tekrar DB'ye yazar (double count)
+          await NativeBridge.getPendingIntakes();
+          await addWater(amountMl: amountMl, fromNative: true);
         }
       }
     });
