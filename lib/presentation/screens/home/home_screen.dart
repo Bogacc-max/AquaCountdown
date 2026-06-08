@@ -6,7 +6,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
-import '../../../core/platform/native_bridge.dart';
 import '../../../core/services/ad_manager.dart';
 import '../../../core/services/share_service.dart';
 import '../../../core/themes/app_theme.dart';
@@ -87,16 +86,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         ref.invalidate(streakProvider);
         ref.invalidate(weeklyRecordsProvider);
       } else {
-        // Aynı gün, uygulama ön plana geldi — duvar kağıdını senkronize et
-        final record = ref.read(todayRecordProvider).valueOrNull;
-        final settings = ref.read(settingsProvider).valueOrNull;
-        if (record != null && settings != null) {
-          NativeBridge.syncWaterData(
-            remainingMl: record.remainingMl,
-            targetMl: record.targetMl,
-            unit: settings.unit,
-          );
-        }
+        // Aynı gün — baloncuktan bekleyen kayıtları işle ve duvar kağıdını güncelle
+        ref.invalidate(todayRecordProvider);
       }
     }
   }
